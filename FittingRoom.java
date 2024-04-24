@@ -4,6 +4,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,7 +17,30 @@ public class FittingRoom {
 
     public static void main(String[] args) {
         ExecutorService executor = Executors.newFixedThreadPool(10); // Pool for handling multiple clients
+        try {
+			Socket s = new Socket("192.168.0.0",PORT);
+			DataOutputStream out = new DataOutputStream(s.getOutputStream());
+			DataInputStream input = new DataInputStream(s.getInputStream());
+			out.writeUTF("Server");
+			String line = input.readUTF();
 
+			//sends fitting rooms
+			if(line.contentEquals("ready")) {
+				out.writeUTF(Integer.toString(MAX_FITTING_ROOMS));
+			}
+			line = input.readUTF();
+			if(line.contentEquals("ready")) {
+				out.writeUTF(Integer.toString(2 * MAX_FITTING_ROOMS));
+			}
+            input.close();
+            out.close();
+		} catch (UnknownHostException e1) {
+			
+			e1.printStackTrace();
+		} catch (IOException e1) {
+		
+			e1.printStackTrace();
+		}
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started. Listening on Port " + PORT);
 
@@ -49,7 +73,8 @@ public class FittingRoom {
                     if (clientMessage.equalsIgnoreCase("OVER")) {
                         running = false;
                     } else {
-                        handleClientRequest(clientMessage, output);
+                        //Sending Input instead
+                        handleClientRequest(clientMessage,input, output);
                     }
                 }
             } catch (IOException e) {
@@ -63,10 +88,16 @@ public class FittingRoom {
             }
         }
 
-        private void handleClientRequest(String request, DataOutputStream output) throws IOException {
+        private void handleClientRequest(String request,DataInputStream input, DataOutputStream output) throws IOException {
             if (request.equalsIgnoreCase("ENTER")) {
                 int roomNumber = findFreeRoom();
                 if (roomNumber != -1) {
+                    //ADDED CODE FOR CONTROLLER CHECK
+                    output.writeUTF("Entered");
+                    request = input.readUTF();
+                    while(!request.equalsIgnoreCase("READY")){
+
+                    }
                     output.writeUTF("You have entered room " + roomNumber);
                 } else {
                     output.writeUTF("No free rooms available, please wait.");
