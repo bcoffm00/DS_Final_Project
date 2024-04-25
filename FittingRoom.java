@@ -32,13 +32,11 @@ public class FittingRoom {
 			if(line.contentEquals("ready")) {
 				out.writeUTF(Integer.toString(2 * MAX_FITTING_ROOMS));
 			}
-            input.close();
-            out.close();
 		} catch (UnknownHostException e1) {
-			
+			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (IOException e1) {
-		
+			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -93,7 +91,7 @@ public class FittingRoom {
                 int roomNumber = findFreeRoom();
                 if (roomNumber != -1) {
                     //ADDED CODE FOR CONTROLLER CHECK
-                    output.writeUTF("Entered");
+                    output.writeUTF("IN");
                     request = input.readUTF();
                     while(!request.equalsIgnoreCase("READY")){
 
