@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.io.DataOutputStream;
 
 public class Controller {
-public static ArrayList<Socket> Servers = new ArrayList<Socket>();
+public static ArrayList<Connection> Servers = new ArrayList<Connection>();
 	
-public static ArrayList<Socket> getServers(){
+public static ArrayList<Connection> getServers(){
 	return Servers;
 }
 	public static void main(String[] args) throws IOException {
@@ -46,6 +46,7 @@ class Connection extends Thread {
 	String ServerIP = null;
 	int port;
 	boolean client = false;
+	boolean server = false;
 
 	
 	Socket connection;
@@ -55,6 +56,30 @@ class Connection extends Thread {
 	int waitingrooms;
 	int fittingrooms;
 	
+	public Socket getConnection() {
+		return connection;
+	}
+
+	public void setConnection(Socket connection) {
+		this.connection = connection;
+	}
+
+	public int getWaitingrooms() {
+		return waitingrooms;
+	}
+
+	public void setWaitingrooms(int waitingrooms) {
+		this.waitingrooms = waitingrooms;
+	}
+
+	public int getFittingrooms() {
+		return fittingrooms;
+	}
+
+	public void setFittingrooms(int fittingrooms) {
+		this.fittingrooms = fittingrooms;
+	}
+
 	private DataInputStream ControllerIn = null;
 	private DataOutputStream ControllerOut = null;
 	
@@ -77,7 +102,9 @@ class Connection extends Thread {
 		
 		//Keeps Track Of Connections
 		if(line.contentEquals("Server")) {
-			Controller.getServers().add(connection);
+			
+			
+			
 			System.out.println("Connected to fitting room at:" + connection.getInetAddress().getHostAddress());
 			
 		
@@ -89,27 +116,43 @@ class Connection extends Thread {
 			
 			ServerIP = connection.getInetAddress().getHostAddress();
 			System.out.println("Server at: " + connection.getInetAddress().getHostAddress() +" has " + waitingrooms +" waiting rooms");
+			Controller.getServers().add(this);
 			
+			while(connection.isConnected()) {
+				
+				
+			}
 			
 		}else if(line.contentEquals("client")) {
+			input = new DataInputStream(connection.getInputStream());
+			out = new DataOutputStream(connection.getOutputStream());
+			
 			ClientIP = connection.getInetAddress().getHostAddress();
 			client = true;
 			System.out.println("Connected to Client at: " + connection.getInetAddress().getHostAddress());
 			
 			// Controller can now push messages
-			Socket s = Controller.getServers().get(0);
+			Socket s = new Socket(Controller.getServers().get(0).getConnection().getInetAddress().getHostAddress(), 32005);
 			
 			ControllerIn = new DataInputStream(s.getInputStream());
 			ControllerOut = new DataOutputStream(s.getOutputStream());
 			
 			ControllerOut.writeUTF("ENTER");
+			
+			while(s.isConnected()) {
+				
+				line = ControllerIn.readUTF();
+				if(line.contentEquals("IN")) {
+					ControllerOut.writeUTF("READY");
+					line = ControllerIn.readUTF();
+					System.out.println(line);
+					out.writeUTF("Entered Fitting Room at: " + s.getInetAddress().getHostAddress());
+				}
+			}
 		}
 		
 		
-			while(connection.isConnected()) {
-		
 			
-			}
 			
 			
 			
