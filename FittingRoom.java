@@ -4,41 +4,23 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Queue;
+import java.util.LinkedList;
 
 public class FittingRoom {
     private static final int PORT = 32005;
     private static final int MAX_FITTING_ROOMS = 4;
-    private static boolean[] rooms = new boolean[MAX_FITTING_ROOMS]; // true if occupied, false if free
+    private static final int MAX_WAITING_ROOM = MAX_FITTING_ROOMS * 2;
+    private static boolean[] rooms = new boolean[MAX_FITTING_ROOMS + 1]; // Indexing from 1 for simplicity
+    private static Queue<Socket> waitingQueue = new LinkedList<>();
     private static ReentrantLock lock = new ReentrantLock();
 
     public static void main(String[] args) {
-        ExecutorService executor = Executors.newFixedThreadPool(10); // Pool for handling multiple clients
-        try {
-			Socket s = new Socket("192.168.0.0",PORT);
-			DataOutputStream out = new DataOutputStream(s.getOutputStream());
-			DataInputStream input = new DataInputStream(s.getInputStream());
-			out.writeUTF("Server");
-			String line = input.readUTF();
+        ExecutorService executor = Executors.newFixedThreadPool(10); 
 
-			//sends fitting rooms
-			if(line.contentEquals("ready")) {
-				out.writeUTF(Integer.toString(MAX_FITTING_ROOMS));
-			}
-			line = input.readUTF();
-			if(line.contentEquals("ready")) {
-				out.writeUTF(Integer.toString(2 * MAX_FITTING_ROOMS));
-			}
-		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started. Listening on Port " + PORT);
 
@@ -63,7 +45,7 @@ public class FittingRoom {
             try (DataInputStream input = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
                  DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream())) {
 
-                output.writeUTF("Connected to Fitting Room Server. Type 'ENTER' to enter a room or 'EXIT' to leave.");
+                output.writeUTF("Connected to Fitting Room Server. Type 'ENTER' to enter a room, 'EXIT' to leave a room or 'OVER' to disconnect.");
 
                 boolean running = true;
                 while (running) {
@@ -71,8 +53,7 @@ public class FittingRoom {
                     if (clientMessage.equalsIgnoreCase("OVER")) {
                         running = false;
                     } else {
-                        //Sending Input instead
-                        handleClientRequest(clientMessage,input, output);
+                        handleClientRequest(clientMessage, output);
                     }
                 }
             } catch (IOException e) {
@@ -86,24 +67,27 @@ public class FittingRoom {
             }
         }
 
-        private void handleClientRequest(String request,DataInputStream input, DataOutputStream output) throws IOException {
+        private void handleClientRequest(String request, DataOutputStream output) throws IOException {
             if (request.equalsIgnoreCase("ENTER")) {
-                int roomNumber = findFreeRoom();
-                if (roomNumber != -1) {
-                    //ADDED CODE FOR CONTROLLER CHECK
-                    output.writeUTF("IN");
-                    request = input.readUTF();
-                    while(!request.equalsIgnoreCase("READY")){
-
+                lock.lock();
+                try {
+                    int roomNumber = findFreeRoom();
+                    if (roomNumber != -1) {
+                        output.writeUTF("You have entered room " + roomNumber);
+                    } else if (waitingQueue.size() < MAX_WAITING_ROOM) {
+                        waitingQueue.add(clientSocket);
+                        output.writeUTF("All rooms are occupied. You have been added to the waiting queue.");
+                    } else {
+                        output.writeUTF("Both fitting rooms and waiting room are full. Please try again later.");
                     }
-                    output.writeUTF("You have entered room " + roomNumber);
-                } else {
-                    output.writeUTF("No free rooms available, please wait.");
+                } finally {
+                    lock.unlock();
                 }
             } else if (request.equalsIgnoreCase("EXIT")) {
                 boolean success = leaveRoom();
                 if (success) {
                     output.writeUTF("You have exited the room.");
+                    tryAssignRoom();
                 } else {
                     output.writeUTF("Error: You were not in a room.");
                 }
@@ -113,32 +97,36 @@ public class FittingRoom {
         }
 
         private int findFreeRoom() {
-            lock.lock();
-            try {
-                for (int i = 0; i < MAX_FITTING_ROOMS; i++) {
-                    if (!rooms[i]) {
-                        rooms[i] = true;
-                        return i;
-                    }
+            for (int i = 1; i <= MAX_FITTING_ROOMS; i++) {
+                if (!rooms[i]) {
+                    rooms[i] = true;
+                    return i;
                 }
-                return -1; // no free room found
-            } finally {
-                lock.unlock();
             }
+            return -1; 
         }
 
         private boolean leaveRoom() {
-            lock.lock();
-            try {
-                for (int i = 0; i < MAX_FITTING_ROOMS; i++) {
-                    if (rooms[i]) {
-                        rooms[i] = false;
-                        return true;
+            for (int i = 1; i <= MAX_FITTING_ROOMS; i++) {
+                if (rooms[i]) {
+                    rooms[i] = false;
+                    return true;
+                }
+            }
+            return false; 
+        }
+
+        private void tryAssignRoom() {
+            if (!waitingQueue.isEmpty()) {
+                int roomNumber = findFreeRoom();
+                if (roomNumber != -1) {
+                    Socket client = waitingQueue.poll();
+                    try (DataOutputStream output = new DataOutputStream(client.getOutputStream())) {
+                        output.writeUTF("A room is now free. You have entered room " + roomNumber);
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
-                return false; // no room was occupied
-            } finally {
-                lock.unlock();
             }
         }
     }
