@@ -3,155 +3,113 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import static java.lang.System.exit;
 
 public class Client {
 	public static void main(String[] args) {
+		ArrayList<boolean[]> flagList = new ArrayList<>();
 
 		for (int i = 0; i < Integer.parseInt(args[2]); i++) {
 			//Creates N number of threads as specified by the third program argument
-			CustomerThread newThread = new CustomerThread(args, i);
+			CustomerThread newThread = new CustomerThread(args, i, flagList);
+			flagList.add(new boolean[]{false, false});
 			newThread.start();
 		}
+
+		String response = "";
+		Scanner console = new Scanner(System.in);
+		while (!(response = console.nextLine()).equals("END")) {
+			System.out.println("Current list of clients in a fitting room:");
+			for (int i = 0; i < flagList.size(); i++) {
+				if (!flagList.get(i)[0]) {
+					System.out.println("\tThread " + i + ":\t In fitting room changing");
+				}
+			}
+			//response formatting: "thread number" ie.. "1" this would correspond to the i'th thread, starts from 0 inclusively
+			boolean[] kill = {false, true};
+			//{if its in a waiting room, leave flag}
+			flagList.set(Integer.parseInt(response), kill);
+		}
+
 
     }
 	static class CustomerThread extends Thread {
 		private String[] args;
 		private int threadNum;
-		public Boolean[] killFlag = new Boolean[1];
-		private Socket fitRoom;
-
-		public CustomerThread (String[] args, int a) {
+		public ArrayList<boolean[]> flags;
+		private Socket centralServer;
+		private Socket fittingRoom;
+		private PrintWriter pw = null;
+		private BufferedReader br = null;
+		public CustomerThread (String[] args, int a, ArrayList<boolean[]> b) {
 			this.args = args;
 			this.threadNum = a;
-		}
-
-		public void run() {
-			Socket Server = null;
-			PrintWriter pw = null;
-			BufferedReader br = null;
-			//Creates reference points for the variables
-			System.out.println("Attempting to connect to Central Server");
+			this.flags = b;
+			System.out.println("Attempting to connect Thread " + this.threadNum + " to central server");
 			try {
-				Server = new Socket(args[0], Integer.parseInt(args[1]));
-				pw = new PrintWriter(Server.getOutputStream());
-				br = new BufferedReader(new InputStreamReader(Server.getInputStream()));
+				this.centralServer = new Socket(args[0], Integer.parseInt(args[1]));
+				this.pw = new PrintWriter(this.centralServer.getOutputStream());
+				this.br = new BufferedReader(new InputStreamReader(this.centralServer.getInputStream()));
 				//Binds a socket for the central server and sets up an input and output stream reader/writer for it
 			} catch (Exception e) {
 				e.printStackTrace();
 				exit(1);
 			}
+			System.out.println("Thread " + this.threadNum + " is connected to central server");
+			this.Enter();
 
-			pw.write("FITQUERY");pw.flush();
-			System.out.println("Connected to Central Server, Sending Fitting Room Query");
-			//Writes and then flushes a message to the central server containing a request for a fitting room ip
-			String responseIP = null;
-			System.out.println("Waiting for Query Response");
-            try {
-				while (responseIP == null) {
-					responseIP = br.readLine();
-					//waits until central server sends a message to the client containing a properly formatted ip address
-				}
-
-				//Closes the connection with the central server as no more communication will be needed unless the fitting room goes down
-				Server.close();
-				pw.close();
-				br.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-			if (responseIP.equalsIgnoreCase("EXIT")) {exit(0);}
-			//If the fitting rooms are full as well as the waiting rooms then the server will send back an exit command to kill the thread
-			//TODO
-			//This line may kill the entire program not just the current thread which could be an issue
-
-			//beginning of fitting room communications
-			System.out.println("Fitting Room IP received from Central Server, Attempting to Connect to Fitting Room");
+		}
+		private void Enter () {
+			//This is the method for connecting to a fitting room
 			try {
-				this.fitRoom = new Socket(responseIP, Integer.parseInt(this.args[1]));
-				pw = new PrintWriter(this.fitRoom.getOutputStream());
-				br = new BufferedReader(new InputStreamReader(this.fitRoom.getInputStream()));
-				//Connects to the received fitting room IP using the same port as previously used, also sets up the input and output reader/writer at the same time
+				pw.write("FittingRoomQuery");pw.flush();
+				//Message is sent to the central server asking for the fitting room ip that is assigned to this thread
 			} catch (Exception ex) {
 				ex.printStackTrace();
 				exit(1);
 			}
-
-			pw.write("ENTER");pw.flush();
-			//TALK TO YASH ABOUT HOW HE WANTS ME TO SAY THAT THE CLIENT IS HERE OR IF HE NEEDS A MESSAGE AT ALL
-			//FOR NOW JUST ASSUMING THAT CONNECTION IS GOOD TO GO AND MOVING ONTO WAITING FOR A CONSOLE MESSAGE TO END THREAD
-
+			//At this point the central server should send a message to this socket that contains the ip of the fitting room
 			try {
-				System.out.println(br.readLine());
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-			while (!killFlag[0]) {
-				if (!this.fitRoom.isConnected()) {
-					Socket tempServer = null;
-					PrintWriter temppw = null;
-					BufferedReader tempbr = null;
-					//Creates reference points for the variables
-					System.out.println("Attempting to connect to Central Server");
-					try {
-						tempServer = new Socket(args[0], Integer.parseInt(args[1]));
-						temppw = new PrintWriter(tempServer.getOutputStream());
-						tempbr = new BufferedReader(new InputStreamReader(tempServer.getInputStream()));
-						//Binds a socket for the central server and sets up an input and output stream reader/writer for it
-					} catch (Exception e) {
-						e.printStackTrace();
-						exit(1);
-					}
-
-					temppw.write("FITQUERY");temppw.flush();
-					System.out.println("Connected to Central Server, Sending Fitting Room Query");
-					//Writes and then flushes a message to the central server containing a request for a fitting room ip
-					String tempresponseIP = null;
-					System.out.println("Waiting for Query Response");
-					try {
-						while (tempresponseIP == null) {
-							tempresponseIP = tempbr.readLine();
-							//waits until central server sends a message to the client containing a properly formatted ip address
-						}
-
-						//Closes the connection with the central server as no more communication will be needed unless the fitting room goes down
-						tempServer.close();
-						temppw.close();
-						tempbr.close();
-					} catch (IOException e) {
-						throw new RuntimeException(e);
-					}
-
-					temppw.write("ENTER");temppw.flush();
-
-					if (tempresponseIP.equalsIgnoreCase("EXIT")) {exit(0);}
-					//If the fitting rooms are full as well as the waiting rooms then the server will send back an exit command to kill the thread
-					//TODO
-					//This line may kill the entire program not just the current thread which could be an issue
-					System.out.println("Fitting Room IP received from Central Server, Attempting to Connect to Fitting Room");
-					try {
-						this.fitRoom = new Socket(tempresponseIP, Integer.parseInt(this.args[1]));
-						pw = new PrintWriter(this.fitRoom.getOutputStream());
-						br = new BufferedReader(new InputStreamReader(this.fitRoom.getInputStream()));
-						//Connects to the received fitting room IP using the same port as previously used, also sets up the input and output reader/writer at the same time
-					} catch (Exception ex) {
-						ex.printStackTrace();
-						exit(1);
-					}
+				String response;
+				while ((response  = br.readLine()) == null) {
+					this.sleep(500);
+					//TODO have the central server send back a fitting room ip
 				}
-				//Fault tolerance testing of this is needed to be safe
+				//This should wait for the central server to send the fitting room ip ^^^
+				this.fittingRoom = new Socket(response, Integer.parseInt(args[1]));
+			} catch (Exception ex) {
+				System.out.println("Error in the fitting room ip response");
+				ex.printStackTrace();
+				exit(1);
+			}
+		}
+
+		public void run() {
+			pw.write("Enter");pw.flush();
+			System.out.println("\t\tSending \"Enter\" message to central server");
+			//Writes and then flushes a message to the central server containing "Enter" which should then somehow
+			//add the customer thread into the appropriate fitting room and send that message to the fitting room server
+
+			//waiting for the message that im in the fitting room
+
+			while (!flags.get(this.threadNum)[1]) {
+				if (!this.fittingRoom.isConnected()) {
+					this.Enter();
+					pw.write("Enter");pw.flush();
+					//Re-connects to a fitting room server and then sends a enter message to the central server telling it to go back into the fitting room
+				}
                 try {
-                    this.wait(200);
+                    this.sleep(500);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-
-                //Kill flag is changed in the main method as this will work off of console commands based on my understanding
-				//I don't believe much needs to be done here as the client will simply wait for the console command to say when its finished changing
-				//TODO check with quevas about the validity of this statement
+                //Waits until this the kill flag is changed
 			}
+
+			pw.write("leave");pw.flush();
+			//Sends the leave message to the central server
 
 
 
@@ -159,5 +117,7 @@ public class Client {
 
 
         }
+
+
 	}
 }
