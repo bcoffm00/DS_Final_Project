@@ -34,7 +34,7 @@ public class Client {
 		}*/
 
 
-    }
+	}
 	static class CustomerThread extends Thread {
 		private String[] args;
 		private int threadNum;
@@ -50,6 +50,7 @@ public class Client {
 				this.centralServer = new Socket(args[0], Integer.parseInt(args[1]));
 				this.pw = new PrintWriter(this.centralServer.getOutputStream());
 				this.br = new BufferedReader(new InputStreamReader(this.centralServer.getInputStream()));
+				this.pw.write("client");this.pw.flush();
 				//Binds a socket for the central server and sets up an input and output stream reader/writer for it
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -62,7 +63,7 @@ public class Client {
 		private void Enter () {
 			//This is the method for connecting to a fitting room
 			try {
-				
+
 				pw.write("FittingRoomQuery");pw.flush();
 				System.out.println("\tClient " + this.threadNum + " fitting room IP qeuried");
 				//Message is sent to the central server asking for the fitting room ip that is assigned to this thread
@@ -78,7 +79,7 @@ public class Client {
 					//TODO have the central server send back a fitting room ip
 					//GETS STUCK HERE FOR NOW
 				}
-				
+
 				//This should wait for the central server to send the fitting room ip ^^^
 				this.fittingRoom = new Socket(response, Integer.parseInt(args[1]));
 			} catch (Exception ex) {
@@ -89,42 +90,47 @@ public class Client {
 		}
 
 		public void run() {
-			this.Enter();
+			/////////////
+			//this.Enter();
+			//THIS NEEDS TO BE ALTERED SOMEHOW
+			//////////////////
 			//After successfully being connected with the central server and sending the "fittingroomquery" message then I should be assigned to a fitting room
 			//and the IP of said fitting room returned. I should be placed into the waiting room and when the fitting room is ready for me to be in the changing room then
 			//A "ready" message should be sent via the central server to me
 
 			//waiting for the message that states that im not in the waiting room and there is space for me in a changing room
-			pw.write("Enter");pw.flush();
+			pw.write("ENTER");pw.flush();
 			System.out.println("\t\t" + "Client " + this.threadNum + " sending \"Enter\" message to fitting room");
 			String waitingAnswer = "";
+			int kill = 0;
 			try {
-				while ((waitingAnswer = br.readLine()).equalsIgnoreCase("All rooms are occupied. You have been added to the waiting queue.")) {
-					System.out.println("Client " + this.threadNum + " is waiting on a changing room");
-					this.sleep(500);
-					pw.write("Enter");pw.flush();
-					
+				while (!(waitingAnswer = br.readLine()).equalsIgnoreCase("changingRoom") && kill == 0) {
+					if (waitingAnswer.equalsIgnoreCase("waitingRoom")) {
+						System.out.println("Client " + this.threadNum + " is waiting on a changing room");
+					} else if (waitingAnswer.equalsIgnoreCase("full")) {
+						kill++;
+					}
+					pw.write("ENTER");pw.flush();
+					this.sleep(250);
 				}
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			
-			//sends a enter message to the fitting room
-			
-			//system should wait a random amount of time from 0 -> 1 before leaving the changing room
-			try {
-				this.sleep((long)(Math.random() * 1000));
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-				
-		
-			pw.write("leave");pw.flush();
-			//Sends the leave message to the central server
+			if (kill == 0) {
+				//system should wait a random amount of time from 0 -> 1 before leaving the changing room
+				try {
+					this.sleep((long)(Math.random() * 1000));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 
-        }
+				pw.write("EXIT");pw.flush();
+				//Sends the leave message to the central server
+
+			}
+
+		}
 
 
 	}
