@@ -1,17 +1,31 @@
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
-import java.io.DataOutputStream;
+import java.util.concurrent.Semaphore;
 
-public class Controller {
+public class Central {
+	
+//Control access to Server List
+public static Semaphore SL = new Semaphore(1);
+
+//List of fitting room Servers
 public static ArrayList<Connection> Servers = new ArrayList<Connection>();
 	
 public static ArrayList<Connection> getServers(){
 	return Servers;
 }
+
+public static Semaphore getSL() {
+	return SL;
+}
+
 	public static void main(String[] args) throws IOException {
 		int port = 32005;
 		
@@ -42,19 +56,17 @@ public static ArrayList<Connection> getServers(){
 }
 
 class Connection extends Thread {
+	static int index = 0;
+	
 	String ClientIP = null;
 	String ServerIP = null;
 	int port;
-	boolean client = false;
-	boolean server = false;
+
 
 	
 	Socket connection;
-	private DataInputStream input = null;
-	private DataOutputStream out = null;
-	
-	int waitingrooms;
-	int fittingrooms;
+	private BufferedReader input = null;
+	private PrintWriter out = null;
 	
 	public Socket getConnection() {
 		return connection;
@@ -64,98 +76,161 @@ class Connection extends Thread {
 		this.connection = connection;
 	}
 
-	public int getWaitingrooms() {
-		return waitingrooms;
-	}
-
-	public void setWaitingrooms(int waitingrooms) {
-		this.waitingrooms = waitingrooms;
-	}
-
-	public int getFittingrooms() {
-		return fittingrooms;
-	}
-
-	public void setFittingrooms(int fittingrooms) {
-		this.fittingrooms = fittingrooms;
-	}
-
-	private DataInputStream ControllerIn = null;
-	private DataOutputStream ControllerOut = null;
+	private BufferedReader ControllerIn = null;
+	private PrintWriter ControllerOut = null;
 	
 	public Connection(Socket connection, int port) {
 		this.connection = connection;
 		this.port = port;
 	}
 	
-	// Message Method
-	public void message(String request, DataInputStream Cinput, DataOutputStream Cout,  DataInputStream Sinput, DataOutputStream Sout) {
-		
+	//Checks if the connection is still alive
+	public boolean isConnectionAlive(String hostname, int port) {
+		boolean alive = false;
+		SocketAddress address = new  InetSocketAddress(hostname,port);
+		Socket socket = new Socket();
+		int timeout = 2000;
+		PrintWriter out;
+		BufferedReader input;
+		try {
+			socket.connect(address,timeout);
+			out =  new PrintWriter(socket.getOutputStream());
+			input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			out.println("Heartbeat");
+			out.flush();
+			String line = input.readLine();
+			if(line.contentEquals("Heartbeat")) {
+				socket.close();
+				alive = true;
+			}
+			
+		}catch(SocketTimeoutException e) {
+			return alive;
+		} catch (IOException e) {
+			return alive;
+		}
+		return alive;
 	}
 
+	//Gets Fitting Room Server
+	public Connection getServerConnection() {
+		while(!Controller.getSL().tryAcquire()) {
+			
+		}
+		ArrayList<Connection> server = Controller.getServers();
+		Connection fittingroom = null;
+		while(index < server.size() && server.get(index) == null ) {
+			index++;
+		}
+		if(server.size() == 0) {
+			return fittingroom;
+		}
+		fittingroom = server.get(index);
+		Controller.getSL().release();
+		return fittingroom;
+	}
+	
 	@Override
 	public void run() {
 	try {
-		input = new DataInputStream(connection.getInputStream());
-		out = new DataOutputStream(connection.getOutputStream());
-		String line  =	input.readUTF();
+		out = new PrintWriter(connection.getOutputStream());
+		input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		System.out.println("Connected");
 		
+		String line  =	input.readLine();
+		while(line == null) {
+			line  =	input.readLine();
+		}
 		//Keeps Track Of Connections
-		if(line.contentEquals("Server")) {
-			
-			
-			
-			System.out.println("Connected to fitting room at:" + connection.getInetAddress().getHostAddress());
-			
-		
-			out.writeUTF("ready");
-			fittingrooms = Integer.parseInt(input.readUTF());
-			System.out.println("Server at: " + connection.getInetAddress().getHostAddress() +" has " + fittingrooms +" fitting rooms");
-			out.writeUTF("ready");
-			waitingrooms = Integer.parseInt(input.readUTF());
-			
+		if(line.equalsIgnoreCase("Server")) {
 			ServerIP = connection.getInetAddress().getHostAddress();
-			System.out.println("Server at: " + connection.getInetAddress().getHostAddress() +" has " + waitingrooms +" waiting rooms");
+			System.out.println("Connected to fitting room at: " + ServerIP);
+		
+			out.println("CONNECTED");
+			out.flush();
+			
+			while(!Controller.getSL().tryAcquire()) {
+				
+			}
 			Controller.getServers().add(this);
 			
-			while(connection.isConnected()) {
-				
-				
-			}
+			Controller.getSL().release();
 			
-		}else if(line.contentEquals("client")) {
-			input = new DataInputStream(connection.getInputStream());
-			out = new DataOutputStream(connection.getOutputStream());
+			String hostaddress = ServerIP;
+			int port = 32005;
 			
-			ClientIP = connection.getInetAddress().getHostAddress();
-			client = true;
-			System.out.println("Connected to Client at: " + connection.getInetAddress().getHostAddress());
+			boolean running = isConnectionAlive(hostaddress,port);
 			
-			// Controller can now push messages
-			Socket s = new Socket(Controller.getServers().get(0).getConnection().getInetAddress().getHostAddress(), 32005);
 			
-			ControllerIn = new DataInputStream(s.getInputStream());
-			ControllerOut = new DataOutputStream(s.getOutputStream());
-			
-			ControllerOut.writeUTF("ENTER");
-			
-			while(s.isConnected()) {
-				
-				line = ControllerIn.readUTF();
-				if(line.contentEquals("IN")) {
-					ControllerOut.writeUTF("READY");
-					line = ControllerIn.readUTF();
-					System.out.println(line);
-					out.writeUTF("Entered Fitting Room at: " + s.getInetAddress().getHostAddress());
+			while(running) { 
+				try {
+					Thread.sleep(2000);
+					running = isConnectionAlive(hostaddress,port);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
+			
+			while(!Controller.getSL().tryAcquire()) {
+				
+			}
+			Controller.getServers().remove(this);
+			Controller.getSL().release();
+			
+			System.out.println("Server at: " + ServerIP +" has disconnected");
+			
+		}else if(line.equalsIgnoreCase("client")) {
+			
+			ClientIP = connection.getInetAddress().getHostAddress();
+			
+			System.out.println("Connected to Client at: " + ClientIP);
+			
+			// Controller can now push messages
+			
+			Connection FittingRoom =  getServerConnection();
+			if(FittingRoom == null) {
+				out.println("There are no fitting room servers at this time.");
+				out.flush();
+				connection.close();
+				System.out.println("Client at: " + ClientIP + "has Disconnected.");
+			}else {
+			String hostaddress = FittingRoom.ServerIP;
+			Socket s = new Socket(hostaddress, 32005);
+			
+			
+			//Get input/output for fitting room server
+			ControllerOut= new PrintWriter(s.getOutputStream());
+			ControllerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
+			
+			
+			ControllerOut.println("FITQUERY");
+			ControllerOut.flush();
+			
+			
+			while(Controller.getServers().contains(FittingRoom)) {
+				ControllerOut.println("request");
+				ControllerOut.flush();
+				
+				line = ControllerIn.readLine();
+				out.println(line);
+				out.flush();
+				
+				ControllerOut.println("request");
+				ControllerOut.flush();
+				
+				line = input.readLine();
+				ControllerOut.println(line);
+				ControllerOut.flush();
+				
+			}
+			System.out.println("Client at: " + ClientIP + "has Disconnected.");
+			
+			ControllerOut.close();
+			ControllerIn.close();
+			}
 		}
-		
-		
-			
-			
-			
-			
+
 			input.close();
 			out.close();
 			connection.close();
