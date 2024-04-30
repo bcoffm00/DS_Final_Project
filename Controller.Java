@@ -10,7 +10,7 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
-public class Central {
+public class Controller {
 	
 //Control access to Server List
 public static Semaphore SL = new Semaphore(1);
@@ -142,7 +142,7 @@ class Connection extends Thread {
 			line  =	input.readLine();
 		}
 		//Keeps Track Of Connections
-		if(line.equalsIgnoreCase("Server")) {
+		if(line.equalsIgnoreCase("server")) {
 			ServerIP = connection.getInetAddress().getHostAddress();
 			System.out.println("Connected to fitting room at: " + ServerIP);
 		
@@ -193,7 +193,7 @@ class Connection extends Thread {
 				out.println("There are no fitting room servers at this time.");
 				out.flush();
 				connection.close();
-				System.out.println("Client at: " + ClientIP + "has Disconnected.");
+				System.out.println("Client at: " + ClientIP + " has Disconnected.");
 			}else {
 			String hostaddress = FittingRoom.ServerIP;
 			Socket s = new Socket(hostaddress, 32005);
@@ -208,26 +208,50 @@ class Connection extends Thread {
 			ControllerOut.flush();
 			
 			
-			while(Controller.getServers().contains(FittingRoom)) {
-				ControllerOut.println("request");
+			while(line != null) {
+				if(Controller.getServers().contains(FittingRoom)) {
+				System.out.println(213);	
+				
+				//Sends ready message to Server
+				ControllerOut.println("ready");
 				ControllerOut.flush();
 				
+				//Makes sure user gets prompted
 				line = ControllerIn.readLine();
+				System.out.println(line);
+				while(line == null) {
+				line = ControllerIn.readLine();
+				}
 				out.println(line);
 				out.flush();
 				
-				ControllerOut.println("request");
-				ControllerOut.flush();
-				
+				//Pushes message from client to Fitting Room Server
 				line = input.readLine();
 				ControllerOut.println(line);
 				ControllerOut.flush();
 				
+				/*
+				//Sends ready message to Server
+				ControllerOut.println("ready");
+				ControllerOut.flush();
+				
+				//Sends Fitting Room Server message to Client
+				line = ControllerIn.readLine();
+				out.println(line);
+				*/
+				}else {
+					out.println("Disconnected from server");
+					FittingRoom = getServerConnection();
+					ControllerOut.println("FITQUERY");
+					ControllerOut.flush();
+				}
+				
 			}
-			System.out.println("Client at: " + ClientIP + "has Disconnected.");
+			System.out.println("Client at: " + ClientIP + " has Disconnected.");
 			
 			ControllerOut.close();
 			ControllerIn.close();
+			s.close();
 			}
 		}
 
