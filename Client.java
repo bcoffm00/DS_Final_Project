@@ -15,6 +15,12 @@ public class Client {
 			CustomerThread newThread = new CustomerThread(args, i);
 			System.out.println("Client thread "  + i + " created");
 			newThread.start();
+			try {
+				Thread.sleep((long)(Math.random() * 1000));
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -23,7 +29,6 @@ public class Client {
 		private String[] args;
 		private int threadNum;
 		private Socket centralServer;
-		private Socket fittingRoom;
 		private PrintWriter pw = null;
 		private BufferedReader br = null;
 		public CustomerThread (String[] args, int a) {
@@ -46,28 +51,47 @@ public class Client {
 		public void run() {
 			String cliName = "Client " + this.threadNum;
 			try {
-				this.pw.write("client");this.pw.flush();
+				
 				int task = 1;
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
 						message = br.readLine();
+						System.out.println(message);
 					}
 					if ((message).equalsIgnoreCase("disconnect")) {
 						task = 1;
 					} else {
 						switch (task) {
-							case 1: 
-								pw.write("ENTER");pw.flush();
-								System.out.println("\t\t" + cliName + " sending \"Enter\" message to fitting room");
+							case 1:
+								this.pw.println("client");this.pw.flush();
+								System.out.println("\t\t" + cliName + " sending \"client\" message to fitting room");
 								task++;
 								break;
 								//Sends ENTER message to server
 							case 2: 
+								if (message.contains("Connected to Fitting Room Server")) {
+									System.out.println("\t\t\t" + cliName + " has connected to the fitting room");
+									task++;
+									pw.println("ENTER");pw.flush();
+									break;
+								} else if (message.contains("No fitting rooms")) {
+									System.out.println("\t\t\t" + cliName + ", no fitting rooms available, killing client");
+									task = 10000;
+									this.pw.println("RECEIVED");
+									break;
+								} else {
+									System.out.println("\t\t\t" + cliName + ", Unknown input, reverting");
+									task--;
+									break;
+								}
+							case 3: 
 								if (message.contains("You have entered room")) {
+									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
 									task++;
 									//Client is in changing room, move on to sleep for x amount
 								} else if (message.contains("All rooms are occupied")){
+									System.out.println("\t\t\t" + cliName + " has entered a waiting room, reverting");
 									task--;
 									//Client is in waiting room, re-send enter message until in changing room message received
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
@@ -79,13 +103,9 @@ public class Client {
 									//Unknown or null input, just retry
 								}
 								break;
-							case 3: 
-								//Client is beginning to change for 0 - 1000 miliSeconds
-								this.sleep((long)(Math.random() * 1000));
-								task++;
-								break;
 							case 4:
-								pw.write("EXIT");pw.flush();
+								Thread.sleep((long)(Math.random() * 1000));
+								pw.println("EXIT");pw.flush();
 								//Sends the leave message to the central server
 								break;
 							case 5:
@@ -98,6 +118,19 @@ public class Client {
 				ex.printStackTrace();
 				exit(1);
 			}
+			try {
+				if (this.pw != null) {
+					this.pw.close();
+				} if (this.br != null) {
+					this.br.close();
+				} if (this.centralServer != null) {
+					this.centralServer.close();
+				}
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+			
+			
 		}
 
 
