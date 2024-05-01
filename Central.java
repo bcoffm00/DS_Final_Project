@@ -218,8 +218,7 @@ class Connection extends Thread {
 				System.out.println(213);	
 				
 				//Sends ready message to Server
-				ControllerOut.println("ready");
-				ControllerOut.flush();
+
 				
 				//Makes sure user gets prompted
 				line = ControllerIn.readLine();

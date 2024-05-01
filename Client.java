@@ -86,25 +86,30 @@ public class Client {
 									break;
 								}
 							case 3: 
-								if (message.contains("You have entered room")) {
+								if (message.contains("Client has entered room")) {
 									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
 									task++;
 									//Client is in changing room, move on to sleep for x amount
+									break;
 								} else if (message.contains("All rooms are occupied")){
 									System.out.println("\t\t\t" + cliName + " has entered a waiting room, reverting");
 									task--;
 									//Client is in waiting room, re-send enter message until in changing room message received
+									break;
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
 									task = 10000;
 									System.out.println("\t\t" + cliName + " all fitting and waiting options are full, disconecting");
 									//All fitting room and waiting rooms are full disconnecting
+									break;
 								} else {
 									task--;
 									//Unknown or null input, just retry
+									break;
 								}
-								break;
 							case 4:
+								System.out.println("here");
 								Thread.sleep((long)(Math.random() * 1000));
+								System.out.println("there");
 								pw.println("EXIT");pw.flush();
 								//Sends the leave message to the central server
 								break;
