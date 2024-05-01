@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
@@ -63,7 +64,7 @@ class Connection extends Thread {
 	int port;
 
 
-	
+	Socket s;
 	Socket connection;
 	private BufferedReader input = null;
 	private PrintWriter out = null;
@@ -181,7 +182,7 @@ class Connection extends Thread {
 			System.out.println("Server at: " + ServerIP +" has disconnected");
 			
 		}else if(line.equalsIgnoreCase("client")) {
-			
+			try {
 			ClientIP = connection.getInetAddress().getHostAddress();
 			
 			System.out.println("Connected to Client at: " + ClientIP);
@@ -190,8 +191,12 @@ class Connection extends Thread {
 			
 			Connection FittingRoom =  getServerConnection();
 			if(FittingRoom == null) {
-				out.println("There are no fitting room servers at this time.");
+				out.println("No fitting room servers at this time.");
 				out.flush();
+				line = input.readLine();
+				while(!line.equalsIgnoreCase("RECIEVED")){
+					line = input.readLine();
+				}
 				connection.close();
 				System.out.println("Client at: " + ClientIP + " has Disconnected.");
 			}else {
@@ -255,6 +260,28 @@ class Connection extends Thread {
 			ControllerOut.close();
 			ControllerIn.close();
 			s.close();
+			}
+			}catch(Exception e) {
+				
+					if(input != null) {
+						input.close();
+					}
+					if(out != null) {
+						out.close();
+					}
+					
+					if(ControllerOut != null) {
+						ControllerOut.close();
+					}
+					if(ControllerIn != null) {
+						ControllerIn.close();
+					}
+					if(s != null) {
+						s.close();
+					}
+					
+					System.out.println("Client at: " + ClientIP + " has Disconnected.");
+				
 			}
 		}
 
