@@ -12,8 +12,8 @@ public class Client {
 
 		for (int i = 0; i < Integer.parseInt(args[2]); i++) {
 			//Creates N number of threads as specified by the third program argument
-			CustomerThread newThread = new CustomerThread(args, i);
 			System.out.println("Client thread "  + i + " created");
+			CustomerThread newThread = new CustomerThread(args, i);
 			newThread.start();
 			try {
 				Thread.sleep((long)(Math.random() * 1000));
@@ -65,7 +65,7 @@ public class Client {
 						switch (task) {
 							case 1:
 								this.pw.println("client");this.pw.flush();
-								System.out.println("\t\t" + cliName + " sending \"client\" message to fitting room");
+								System.out.println("\t\t" + cliName + " sending \"client\" message to central server");
 								task++;
 								break;
 								//Sends ENTER message to server
@@ -75,7 +75,7 @@ public class Client {
 									task++;
 									pw.println("ENTER");pw.flush();
 									break;
-								} else if (message.contains("No fitting rooms")) {
+								} else if (message.contains("No fitting room server")) {
 									System.out.println("\t\t\t" + cliName + ", no fitting rooms available, killing client");
 									task = 10000;
 									this.pw.println("RECEIVED");
