@@ -115,19 +115,17 @@ class Connection extends Thread {
 
 	//Gets Fitting Room Server
 	public Connection getServerConnection() {
-		while(!Central.getSL().tryAcquire()) {
-			
-		}
+		System.out.println("118");
+		
 		ArrayList<Connection> server = Central.getServers();
 		Connection fittingroom = null;
-		while(index < server.size() && server.get(index) == null ) {
-			index++;
-		}
+	
 		if(server.size() == 0) {
-			return fittingroom;
+			return null;
+		}else if(index == server.size()) {
+			index = 0;
 		}
 		fittingroom = server.get(index);
-		Central.getSL().release();
 		return fittingroom;
 	}
 	
@@ -211,54 +209,95 @@ class Connection extends Thread {
 			
 			ControllerOut.println("FITQUERY");
 			ControllerOut.flush();
+			int task = 1;
 			
-			
+			System.out.println("216");
 			while(line != null) {
-				if(Central.getServers().contains(FittingRoom)) {
-				System.out.println(213);	
+				if(!Central.getServers().contains(FittingRoom)) {
+				System.out.println("218");	
 				
-				//Sends ready message to Server
-
 				
-				//Makes sure user gets prompted
-				line = ControllerIn.readLine();
-				System.out.println(line);
 				
-				while(line == null) {
-				line = ControllerIn.readLine();
-				}
-				out.println(line);
-				out.flush();
-				
-				//Pushes message from client to Fitting Room Server
-				line = input.readLine();
-				System.out.println(line);
-				
-				ControllerOut.println(line);
-				ControllerOut.flush();
-				
-				/*
-				//Sends ready message to Server
-				ControllerOut.println("ready");
-				ControllerOut.flush();
-				
-				//Sends Fitting Room Server message to Client
-				line = ControllerIn.readLine();
-				out.println(line);
-				*/
 				}else {
-					out.println("Disconnected from server");
-					FittingRoom = getServerConnection();
-					ControllerOut.println("FITQUERY");
-					ControllerOut.flush();
+					switch(task) {
+					case 0:
+						//Sends ready message to Server
+						System.out.println("226");
+						ControllerOut.println("ready");
+						ControllerOut.flush();
+						task++;
+						break;	
+					case 1:
+						//Reads from Server
+						System.out.println(231);
+						line = ControllerIn.readLine();
+						System.out.println(line);
+						task++;
+						break;
+						
+					case 2:
+						//Sends the client message from Server
+						System.out.println("239");
+						
+					
+						if(line.contains("Client has entered room")) {
+							System.out.println(line);
+							out.println(line);
+							out.flush();
+							task  = 3;
+							break;
+						}else if(line.equalsIgnoreCase("Both fitting rooms and waiting room are full. Please try again later.")){
+							index++;
+							task = 6;
+							break;
+						}else {
+						out.println(line);
+						out.flush();
+						task++;
+						break;
+						}
+						
+					case 3:
+						//Reads from Client
+						System.out.println("260");
+						line = input.readLine();
+						System.out.println(line);
+						task++;
+						break;
+						
+					case 4:
+						//Sends Message to Server From Client
+						
+						System.out.println("269");
+						ControllerOut.println(line);
+						ControllerOut.flush();
+						task = 1;
+						break;
+						
+					case 5:
+						//Fitting Room is full
+						System.out.println(262);
+						FittingRoom =  getServerConnection();
+						if(FittingRoom == null) {
+							out.println("No fitting room servers at this time.");
+							out.flush();
+							line = input.readLine();
+							while(!line.equalsIgnoreCase("RECIEVED")){
+								line = input.readLine();
+							}
+						
+						break;
+					}
 				}
 				
+				}
 			}
-			System.out.println("Client at: " + ClientIP + " has Disconnected.");
 			
 			ControllerOut.close();
 			ControllerIn.close();
 			s.close();
+			connection.close();
+			System.out.println("Client at: " + ClientIP + " has Disconnected.");
 			}
 			}catch(Exception e) {
 				

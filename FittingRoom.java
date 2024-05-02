@@ -39,7 +39,7 @@ public class FittingRoom {
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
         	//Connects to Central Server
-        	Socket s = new Socket("10.183.240.15",PORT);
+        	Socket s = new Socket("192.168.0.0",PORT);
 
 			PrintWriter out = new PrintWriter(s.getOutputStream());
 			BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -85,25 +85,29 @@ public class FittingRoom {
 
             try ( PrintWriter output = new PrintWriter(clientSocket.getOutputStream());
     			BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-
+            	
+            	System.out.println(94);
                 output.println("Connected to Fitting Room Server. Type 'ENTER' to enter a room, 'EXIT' to leave a room or 'OVER' to disconnect.");
                 output.flush();
 
                 boolean running = true;
                 while (running) {
                     try {
+                    	
                         String clientMessage = input.readLine();
-                        if (clientMessage.equalsIgnoreCase("OVER")) {
+                        if (clientMessage.equalsIgnoreCase("Exit")) {
                             running = false;
                         } else {
-                            handleClientRequest(clientMessage, output);
+                            handleClientRequest(clientMessage, output,input);
                         }
+                    
                     } catch (SocketException e) {
                         System.out.println("Socket was closed unexpectedly: " + e.getMessage());
                         running = false;
                     }
                 }
-            } catch (IOException e) {
+            	}
+            catch (IOException e) {
 
                 System.out.println("I/O error: " + e.getMessage());
             } finally {
@@ -123,7 +127,7 @@ public class FittingRoom {
 
         private void releaseResources() {
 
-            lock.lock();
+          
             try {
 
                 Integer roomNumber = socketToRoomMap.remove(clientSocket);
@@ -133,19 +137,23 @@ public class FittingRoom {
                 waitingQueue.remove(clientSocket);
             } finally {
 
-                lock.unlock();
+                
             }
             System.out.println("Resources released for client: " + clientSocket);
         }
 
-        private void handleClientRequest(String request, PrintWriter output) throws IOException {
+        private void handleClientRequest(String request, PrintWriter output,BufferedReader input) throws IOException {
+        	System.out.println(request);
             if (request.equalsIgnoreCase("ENTER")) {
                 lock.lock();
                 try {
                     int roomNumber = findFreeRoom();
                     if (roomNumber != -1) {
+                    	
+                   
                         output.println("Client has entered room " + roomNumber);
                         output.flush();
+                        System.out.println(154);
                     } else if (waitingQueue.size() < MAX_WAITING_ROOM) {
                         waitingQueue.add(clientSocket);
                         output.println("All rooms are occupied. You have been added to the waiting queue.");
@@ -166,9 +174,9 @@ public class FittingRoom {
                 } else {
                     output.println("Error: You were not in a room.");
                     output.flush();
-                }
-            } else {
-                output.println("Invalid command.");
+                } 
+            }else {
+                output.println("Invalid command. " + request);
                 output.flush();
             }
         }
