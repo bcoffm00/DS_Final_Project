@@ -1,8 +1,8 @@
-/********************************************************
- * Name:   		Brody Coffman, Tony Aldana and Yash Patel
- * Problem Set:	Final Group project
- * Due Date :	5/2/24
- *******************************************************/
+/***********************************************************
+ * Name:   		   Brody Coffman, Tony Aldana and Yash Patel
+ * Problem Set:	    Final Group project
+ * Due Date :	     5/2/24
+ ***********************************************************/
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -39,7 +39,7 @@ public class FittingRoom {
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
         	//Connects to Central Server
-        	Socket s = new Socket("192.168.0.0",PORT);
+        	Socket s = new Socket("10.181.244.165",PORT);
 
 			PrintWriter out = new PrintWriter(s.getOutputStream());
 			BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
