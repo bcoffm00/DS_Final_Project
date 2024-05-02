@@ -11,6 +11,7 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
+
 public class Central {
 	
 //Control access to Server List
@@ -133,6 +134,9 @@ class Connection extends Thread {
 	//Gets Fitting Room Server
 	public Connection getServerConnection() {
 		System.out.println("118");
+		while(Central.SL.tryAcquire() != true) {
+			
+		}
 		
 		ArrayList<Connection> server = Central.getServers();
 		Connection fittingroom = null;
@@ -143,6 +147,9 @@ class Connection extends Thread {
 			index = 0;
 		}
 		fittingroom = server.get(index);
+		
+		Central.SL.release();
+		
 		return fittingroom;
 	}
 	
@@ -195,7 +202,7 @@ class Connection extends Thread {
 			Central.getServers().remove(this);
 			Central.getSL().release();
 			
-			System.out.println("Server at: " + ServerIP +" has disconnected");
+			System.out.println(name +" has disconnected");
 			
 		}else if(line.equalsIgnoreCase("client")) {
 			try {
@@ -261,7 +268,11 @@ class Connection extends Thread {
 							task  = 3;
 							break;
 						}else if(line.equalsIgnoreCase("Both fitting rooms and waiting room are full. Please try again later.")){
+							while(Central.getSL().tryAcquire() != true) {
+								
+							}
 							index++;
+							Central.getSL().release();
 							task = 5;
 							break;
 						}else {
@@ -289,7 +300,7 @@ class Connection extends Thread {
 						break;
 						
 					case 5:
-						//Fitting Room is full
+						//Fitting Room Server is full
 						System.out.println(name + " At 293");
 						
 						s.close();
@@ -325,8 +336,11 @@ class Connection extends Thread {
 			ControllerOut.close();
 			ControllerIn.close();
 			s.close();
+			
+			input.close();
+			out.close();
 			connection.close();
-			System.out.println("Client at: " + ClientIP + " has Disconnected.");
+			System.out.println(name + " has Disconnected.");
 			}
 			}catch(Exception e) {
 				
@@ -352,9 +366,6 @@ class Connection extends Thread {
 			}
 		}
 
-			input.close();
-			out.close();
-			connection.close();
 	} catch (IOException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
