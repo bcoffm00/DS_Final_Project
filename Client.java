@@ -95,12 +95,13 @@ public class Client {
 		public void run() {
 			String cliName = "Client " + this.threadNum;
 			try {
-				
 				int task = 1;
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
-						message = br.readLine();
+						if (message.contains("Client has entered room")) {
+							message = br.readLine();
+						}
 						System.out.println(message);
 						//Attempts to read in a message if on any case other than 1
 						//Prints message for debugging purposes
@@ -117,6 +118,8 @@ public class Client {
 								task++;
 								break;
 								//Declares that we are a client to the central server
+								
+								
 							case 2: 
 								if (message.contains("Connected to Fitting Room Server")) {
 									System.out.println("\t\t\t" + cliName + " has connected to the fitting room");
@@ -134,6 +137,8 @@ public class Client {
 									break;
 								}
 								//Handles the expected responses for all options of the fitting room status handshake
+								
+								
 							case 3: 
 								if (message.contains("Client has entered room")) {
 									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
@@ -156,6 +161,8 @@ public class Client {
 									break;
 								}
 								//Handles the options for the changing room - waiting room handshake
+								
+								
 							case 4:
 								//System.out.println("here");
 								Thread.sleep((long)(Math.random() * 1000));
