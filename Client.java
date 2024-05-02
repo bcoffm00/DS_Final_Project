@@ -23,8 +23,8 @@ public class Client {
 			}
 		}
 	}
-	
-	
+
+
 	static class CustomerThread extends Thread {
 		private String[] args;
 		private int threadNum;
@@ -51,7 +51,7 @@ public class Client {
 		public void run() {
 			String cliName = "Client " + this.threadNum;
 			try {
-				
+
 				int task = 1;
 				String message = "";
 				while (task < 9) {
@@ -71,44 +71,39 @@ public class Client {
 								task++;
 								break;
 								//Sends ENTER message to server
-							case 2: 
+							case 2:
 								if (message.contains("Connected to Fitting Room Server")) {
 									System.out.println("\t\t\t" + cliName + " has connected to the fitting room");
 									task++;
 									pw.println("ENTER");pw.flush();
-									
-									
+
+
 								} else if (message.contains("No fitting room server")) {
 									System.out.println("\t\t\t" + cliName + ", no fitting rooms available, killing client");
 									task = 10000;
-									this.pw.println("RECEIVED");
-									
+									this.pw.println("RECEIVED");this.pw.flush();
+
 								} else {
 									System.out.println("\t\t\t" + cliName + ", Unknown input, reverting");
 									task--;
-									
+
 								}
 								break;
-							case 3: 
+							case 3:
 								if (message.contains("Client has entered room")) {
 									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
 									task++;
 									//Client is in changing room, move on to sleep for x amount
-									
+
 								} else if (message.contains("All rooms are occupied")){
 									System.out.println("\t\t\t" + cliName + " has entered a waiting room, reverting");
-									task--;
 									//Client is in waiting room, re-send enter message until in changing room message received
-									
+
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
 									task = 10000;
 									System.out.println("\t\t" + cliName + " all fitting and waiting options are full, disconecting");
 									//All fitting room and waiting rooms are full disconnecting
-								
-								} else {
-									task--;
-									//Unknown or null input, just retry
-									
+
 								}
 								break;
 							case 4:
@@ -119,10 +114,10 @@ public class Client {
 								//Sends the leave message to the central server
 								task = 10000;
 								break;
-							
+
 						}
 					}
-				}								
+				}
 			} catch (Exception ex) {
 				ex.printStackTrace();
 				exit(1);
@@ -138,8 +133,8 @@ public class Client {
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			
-			
+
+
 		}
 
 
