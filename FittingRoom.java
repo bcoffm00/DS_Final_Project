@@ -1,8 +1,8 @@
-/***********************************************************
- * Name:   		   Brody Coffman, Tony Aldana and Yash Patel
- * Problem Set:	    Final Group project
- * Due Date :	     5/2/24
- ***********************************************************/
+/********************************************************
+ * Name:   		Brody Coffman, Tony Aldana and Yash Patel
+ * Problem Set:	Final Group project
+ * Due Date :	5/2/24
+ *******************************************************/
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -19,9 +19,13 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.Queue;
 import java.util.LinkedList;
-
 
 public class FittingRoom {
 
@@ -32,44 +36,38 @@ public class FittingRoom {
     private static Queue<Socket> waitingQueue = new LinkedList<>();
     private static Map<Socket, Integer> socketToRoomMap = new HashMap<>();
     private static ReentrantLock lock = new ReentrantLock();
+    private static final Logger LOGGER = Logger.getLogger(FittingRoom.class.getName());
+
+    static {
+        setupLogger();
+    }
+
+    private static void setupLogger() {
+        try {
+            LogManager.getLogManager().reset();
+            Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+            FileHandler fh = new FileHandler("FittingRoom.log", true);
+            fh.setFormatter(new SimpleFormatter());
+            logger.addHandler(fh);
+            logger.setLevel(Level.INFO);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Error setting up logger", e);
+        }
+    }
 
     public static void main(String[] args) {
 
-    	ExecutorService executor = Executors.newFixedThreadPool(10);
+        ExecutorService executor = Executors.newFixedThreadPool(10);
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-        	//Connects to Central Server
-        	Socket s = new Socket("10.181.244.165",PORT);
-
-			PrintWriter out = new PrintWriter(s.getOutputStream());
-			BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-
-			//Sends message to Central saying its a Server
-			out.println("Server");
-			out.flush();
-
-            System.out.println("Server started. Listening on Port " + PORT);
-            String line = "";
+            LOGGER.info("Server started. Listening on Port " + PORT);
             while (true) {
                 Socket socket = serverSocket.accept();
 
-                PrintWriter output = new PrintWriter(socket.getOutputStream());
-    			BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                line = input.readLine();
-
-                //Checking for Hearbeat Connection
-    			if(line.contentEquals("Heartbeat")) {
-                 	output.println("Heartbeat");
-                 	output.flush();
-                 	socket.close();
-                     }else if(line.contentEquals("FITQUERY")){
-                    	 System.out.println("New client connected");
-                    	 executor.execute(new ClientHandler(socket));
-                     }
-
+                executor.execute(new ClientHandler(socket));
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Server socket error", e);
         }
     }
 
@@ -83,33 +81,27 @@ public class FittingRoom {
 
         public void run() {
 
-            try ( PrintWriter output = new PrintWriter(clientSocket.getOutputStream());
-    			BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-            	
-            	System.out.println(94);
-                output.println("Connected to Fitting Room Server. Type 'ENTER' to enter a room, 'EXIT' to leave a room or 'OVER' to disconnect.");
-                output.flush();
+            try (DataInputStream input = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+                 DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream())) {
+
+                output.writeUTF("Connected to Fitting Room Server. Type 'ENTER' to enter a room, 'EXIT' to leave a room or 'OVER' to disconnect.");
 
                 boolean running = true;
                 while (running) {
                     try {
-                    	
-                        String clientMessage = input.readLine();
-                        if (clientMessage.equalsIgnoreCase("Exit")) {
+                        String clientMessage = input.readUTF();
+                        if (clientMessage.equalsIgnoreCase("OVER")) {
                             running = false;
                         } else {
-                            handleClientRequest(clientMessage, output,input);
+                            handleClientRequest(clientMessage, output);
                         }
-                    
                     } catch (SocketException e) {
-                        System.out.println("Socket was closed unexpectedly: " + e.getMessage());
+                        LOGGER.log(Level.SEVERE, "Socket was closed unexpectedly", e);
                         running = false;
                     }
                 }
-            	}
-            catch (IOException e) {
-
-                System.out.println("I/O error: " + e.getMessage());
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "I/O error", e);
             } finally {
 
                 releaseResources();
@@ -120,14 +112,14 @@ public class FittingRoom {
 
                 } catch (IOException e) {
 
-                    System.out.println("Error closing socket: " + e.getMessage());
+                    LOGGER.log(Level.SEVERE, "Error closing socket", e);
                 }
             }
         }
 
         private void releaseResources() {
 
-          
+            lock.lock();
             try {
 
                 Integer roomNumber = socketToRoomMap.remove(clientSocket);
@@ -135,32 +127,25 @@ public class FittingRoom {
                     rooms[roomNumber] = false;
                 }
                 waitingQueue.remove(clientSocket);
+                LOGGER.info("Resources released for client: " + clientSocket);
             } finally {
 
-                
+                lock.unlock();
             }
-            System.out.println("Resources released for client: " + clientSocket);
         }
 
-        private void handleClientRequest(String request, PrintWriter output,BufferedReader input) throws IOException {
-        	System.out.println(request);
+        private void handleClientRequest(String request, DataOutputStream output) throws IOException {
             if (request.equalsIgnoreCase("ENTER")) {
                 lock.lock();
                 try {
                     int roomNumber = findFreeRoom();
                     if (roomNumber != -1) {
-                    	
-                   
-                        output.println("Client has entered room " + roomNumber);
-                        output.flush();
-                        System.out.println(154);
+                        output.writeUTF("Client has entered room " + roomNumber);
                     } else if (waitingQueue.size() < MAX_WAITING_ROOM) {
                         waitingQueue.add(clientSocket);
-                        output.println("All rooms are occupied. You have been added to the waiting queue.");
-                        output.flush();
+                        output.writeUTF("All rooms are occupied. You have been added to the waiting queue.");
                     } else {
-                        output.println("Both fitting rooms and waiting room are full. Please try again later.");
-                        output.flush();
+                        output.writeUTF("Both fitting rooms and waiting room are full. Please try again later.");
                     }
                 } finally {
                     lock.unlock();
@@ -168,16 +153,13 @@ public class FittingRoom {
             } else if (request.equalsIgnoreCase("EXIT")) {
                 boolean success = leaveRoom();
                 if (success) {
-                    output.println("You have exited the room.");
-                    output.flush();
+                    output.writeUTF("You have exited the room.");
                     tryAssignRoom();
                 } else {
-                    output.println("Error: You were not in a room.");
-                    output.flush();
-                } 
-            }else {
-                output.println("Invalid command. " + request);
-                output.flush();
+                    output.writeUTF("Error: You were not in a room.");
+                }
+            } else {
+                output.writeUTF("Invalid command.");
             }
         }
 
@@ -185,6 +167,7 @@ public class FittingRoom {
             for (int i = 1; i <= MAX_FITTING_ROOMS; i++) {
                 if (!rooms[i]) {
                     rooms[i] = true;
+                    socketToRoomMap.put(clientSocket, i);
                     return i;
                 }
             }
@@ -192,11 +175,11 @@ public class FittingRoom {
         }
 
         private boolean leaveRoom() {
-            for (int i = 1; i <= MAX_FITTING_ROOMS; i++) {
-                if (rooms[i]) {
-                    rooms[i] = false;
-                    return true;
-                }
+            Integer roomNumber = socketToRoomMap.get(clientSocket);
+            if (roomNumber != null && rooms[roomNumber]) {
+                rooms[roomNumber] = false;
+                socketToRoomMap.remove(clientSocket);
+                return true;
             }
             return false;
         }
@@ -206,12 +189,12 @@ public class FittingRoom {
                 int roomNumber = findFreeRoom();
                 if (roomNumber != -1) {
                     Socket client = waitingQueue.poll();
-                    try (PrintWriter output = new PrintWriter(clientSocket.getOutputStream())) {
-                        output.println("A room is now free. You have entered room " + roomNumber);
-                        output.flush();
-                        System.out.println("Client moved from waiting queue to room number " + roomNumber);
+                    socketToRoomMap.put(client, roomNumber);
+                    try (DataOutputStream output = new DataOutputStream(client.getOutputStream())) {
+                        output.writeUTF("A room is now free. You have entered room " + roomNumber);
+                        LOGGER.info("Client moved from waiting queue to room number " + roomNumber);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LOGGER.log(Level.SEVERE, "Error moving client from queue", e);
                     }
                 }
             }
