@@ -53,16 +53,13 @@ public class Client {
 			try {
 
 				int task = 1;
-				boolean close = false;
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
-						if (!message.contains("Client has entered room") || close) {
-							System.out.println("listening");
-							message = br.readLine();
-							System.out.println("heard");
-							close = false;
-						}
+						System.out.println("listening");
+						message = br.readLine();
+						System.out.println("heard");
+						
 						System.out.println(message + " to: " + cliName);
 						
 					}
@@ -100,15 +97,10 @@ public class Client {
 									task = 4;
 									//Client is in changing room, move on to sleep for x amount
 									
-
-								}else if(message.contains("A room is now free.")) {
-									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
-									
-									task = 4;
-									
-								}	else if (message.contains("All rooms are occupied")){
+								} else if (message.contains("All rooms are occupied")){
 									System.out.println("\t\t\t" + cliName + " has entered a waiting room, reverting");
-									//Client is in waiting room, re-send enter message until in changing room message received
+									task = 5;
+									//Client is in waiting room, check for messages until the client gets a 
 
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
 									task = 2;
@@ -122,15 +114,19 @@ public class Client {
 								}
 								break;
 							case 4:
-								close = true;
 								System.out.println("here");
 								Thread.sleep((long)(Math.random() * 1000));
 								System.out.println("there");
 								pw.println("EXIT");pw.flush();
 								//Sends the leave message to the central server
-								task = 3;
+								task = 10000;
 								break;
-
+							case 5:
+								if (message.contains("A room is now free")) {
+									System.out.println("\t\t" + cliName + " has entered a changing room from a waiting room");
+									task = 4;
+								}
+								break;
 						}
 					}
 				}
