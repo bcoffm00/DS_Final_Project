@@ -53,13 +53,16 @@ public class Client {
 			try {
 
 				int task = 1;
+				boolean close = false;
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
-						if (!message.contains("Client has entered room")) {
+						if (!message.contains("Client has entered room") || close) {
 							message = br.readLine();
+							close = false;
 						}
-						System.out.println(message);
+						System.out.println(message + " to: " + cliName);
+						
 					}
 					if ((message).equalsIgnoreCase("disconnect")) {
 						task = 1;
@@ -90,12 +93,18 @@ public class Client {
 								}
 								break;
 							case 3:
-								if (message.contains("has entered room")) {
+								if (message.contains("Client has entered room ")) {
 									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
-									task++;
+									task = 4;
 									//Client is in changing room, move on to sleep for x amount
+									
 
-								} else if (message.contains("All rooms are occupied")){
+								}else if(message.contains("A room is now free.")) {
+									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
+									
+									task = 4;
+									
+								}	else if (message.contains("All rooms are occupied")){
 									System.out.println("\t\t\t" + cliName + " has entered a waiting room, reverting");
 									//Client is in waiting room, re-send enter message until in changing room message received
 
@@ -104,15 +113,19 @@ public class Client {
 									System.out.println("\t\t" + cliName + " all fitting and waiting options are full, disconecting");
 									//All fitting room and waiting rooms are full disconnecting
 
+								} else if(message.contains("You have exited the room.")) {
+									task = 1000;
+									System.out.println("\t\t\t" + cliName + " has exited the fitting room.");
 								}
 								break;
 							case 4:
+								close = true;
 								System.out.println("here");
 								Thread.sleep((long)(Math.random() * 1000));
 								System.out.println("there");
 								pw.println("EXIT");pw.flush();
 								//Sends the leave message to the central server
-								task = 10000;
+								task = 3;
 								break;
 
 						}
