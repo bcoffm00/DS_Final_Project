@@ -33,7 +33,7 @@ public class FittingRoom {
 
     private static final int PORT = 32005;
     private static final int MAX_FITTING_ROOMS = 1;
-    private static final int MAX_WAITING_ROOM = MAX_FITTING_ROOMS * 0;
+    private static final int MAX_WAITING_ROOM = MAX_FITTING_ROOMS * 1;
     private static boolean[] rooms = new boolean[MAX_FITTING_ROOMS + 1];
     private static Queue<Socket> waitingQueue = new LinkedList<>();
     private static Map<Socket, Integer> socketToRoomMap = new HashMap<>();
@@ -59,7 +59,7 @@ public class FittingRoom {
     public static void main(String[] args) {
     	
     	ExecutorService executor = Executors.newFixedThreadPool(10);
-
+    	int i = 0;
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
         	//Connects to Central Server
         	Socket s = new Socket("192.168.0.0",PORT);
@@ -87,7 +87,8 @@ public class FittingRoom {
                  	socket.close();
                      }else if(line.contentEquals("FITQUERY")){
                     	 System.out.println("New client connected");
-                    	 executor.execute(new ClientHandler(socket));
+                    	 executor.execute(new ClientHandler(socket,i));
+                    	 i++;
                      }
 
             }
@@ -100,9 +101,11 @@ public class FittingRoom {
     private static class ClientHandler implements Runnable {
 
         private Socket clientSocket;
-
-        public ClientHandler(Socket socket) {
+        private int id;
+        public ClientHandler(Socket socket, int id) {
             this.clientSocket = socket;
+            this.id = id;
+            
         }
 
         public void run() {
@@ -126,21 +129,25 @@ public class FittingRoom {
                         
                     
                     } catch (SocketException e) {
+                    	System.out.println("Socket Exception At Thread-" + id + ": ");
                     	e.printStackTrace();
+                    	
                     	 LOGGER.log(Level.SEVERE, "Socket was closed unexpectedly", e);
-                        running = false;
+                        
                     }
                 }
             	}
             catch (IOException e) {
             	e.printStackTrace();
             	LOGGER.log(Level.SEVERE, "I/O error", e);
+            	
+            
             } finally {
             	
                 releaseResources();
                 
                 try {
-
+                	
                     clientSocket.close();
 
                 } catch (IOException e) {
@@ -159,16 +166,16 @@ public class FittingRoom {
                     rooms[roomNumber] = false;
                 }
                 waitingQueue.remove(clientSocket);
-                LOGGER.info("Resources released for client: " + clientSocket);
+                LOGGER.info("Resources released for client " + id + ": " + clientSocket);
             } finally {
             	
                 lock.unlock();
             }
-            System.out.println("Resources released for client: " + clientSocket);
+            System.out.println("Resources released for client " + id + ": " + clientSocket);
         }
 
         private void handleClientRequest(String request, PrintWriter output,BufferedReader input, Boolean running) throws IOException {
-        	System.out.println(request);
+        	System.out.println("Thread " + id + ": " + request);
             if (request.equalsIgnoreCase("ENTER")) {
                 lock.lock();
                 try {
@@ -197,8 +204,9 @@ public class FittingRoom {
                 if (success) {
                     output.println("You have exited the room.");
                     output.flush();
-                    running = false;
+                    
                     tryAssignRoom();
+                    running = false;
                 } else {
                     output.println("Error: You were not in a room.");
                     output.flush();
