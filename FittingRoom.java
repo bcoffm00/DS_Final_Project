@@ -35,10 +35,10 @@ public class FittingRoom {
     private static final int PORT = 32005;
     private static final int MAX_FITTING_ROOMS = 1;
     private static final int MAX_WAITING_ROOM = MAX_FITTING_ROOMS * 1;
-    //private static boolean[] rooms = new boolean[MAX_FITTING_ROOMS + 1];
-    //private static Queue<Socket> waitingQueue = new LinkedList<>();
-    //private static Map<Socket, Integer> socketToRoomMap = new HashMap<>();
-    //private static ReentrantLock lock = new ReentrantLock();
+    private static boolean[] rooms = new boolean[MAX_FITTING_ROOMS + 1];
+    private static Queue<Socket> waitingQueue = new LinkedList<>();
+    private static Map<Socket, Integer> socketToRoomMap = new HashMap<>();
+    private static ReentrantLock lock = new ReentrantLock();
     private static final Logger LOGGER = Logger.getLogger(FittingRoom.class.getName());
     public static Semaphore froom;
 	public static Semaphore wroom;
