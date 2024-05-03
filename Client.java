@@ -90,7 +90,7 @@ public class Client {
 								}
 								break;
 							case 3:
-								if (message.contains("Client has entered room")) {
+								if (message.contains("has entered room")) {
 									System.out.println("\t\t\t\t" + cliName + " has entered a changing room");
 									task++;
 									//Client is in changing room, move on to sleep for x amount
@@ -100,7 +100,7 @@ public class Client {
 									//Client is in waiting room, re-send enter message until in changing room message received
 
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
-									task = 10000;
+									task = 2;
 									System.out.println("\t\t" + cliName + " all fitting and waiting options are full, disconecting");
 									//All fitting room and waiting rooms are full disconnecting
 
