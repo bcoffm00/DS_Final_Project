@@ -162,7 +162,7 @@ public class FittingRoom {
             }
         }
 
-   /*     private void releaseResources() {
+        private void releaseResources() {
 
           lock.lock();
             try {
@@ -177,12 +177,12 @@ public class FittingRoom {
                 lock.unlock();
             }
             System.out.println("Resources released for client " + id + ": " + clientSocket);
-        }*/
+        }
 
         private void handleClientRequest(String request, PrintWriter output,BufferedReader input, Boolean running) throws IOException {
         	System.out.println("Thread " + id + ": " + request);
             if (request.equalsIgnoreCase("ENTER")) {
-              /*  lock.lock();
+                lock.lock();
                 try {
                     int roomNumber = findFreeRoom();
                     if (roomNumber != -1) {
@@ -202,7 +202,7 @@ public class FittingRoom {
                     }
                 } finally {
                     lock.unlock();
-                }*/
+                }
             	while(true) {
 
 					if(froom.tryAcquire()) {
@@ -228,8 +228,6 @@ public class FittingRoom {
 						}
 
 					}else {
-
-						output.println("Both fitting rooms and waiting room are full. Please try again later.");
 						output.flush();
 						running = false;
 						return;
@@ -277,7 +275,7 @@ public class FittingRoom {
             return false;
         }
 
-        /*private void tryAssignRoom() {
+        private void tryAssignRoom() {
             if (!waitingQueue.isEmpty()) {
                 int roomNumber = findFreeRoom();
                 if (roomNumber != -1) {
@@ -291,6 +289,6 @@ public class FittingRoom {
                     }
                 }
             }
-        } */
+        } 
     }
 }
