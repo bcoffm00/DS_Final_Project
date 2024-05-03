@@ -56,10 +56,11 @@ public class Client {
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
-						System.out.println("listening");
-						message = br.readLine();
-						System.out.println("heard");
-						
+						if (!message.contains("Client has entered room")) {
+							System.out.println("listening");
+							message = br.readLine();
+							System.out.println("heard");
+						}
 						System.out.println(message + " to: " + cliName);
 						
 					}
