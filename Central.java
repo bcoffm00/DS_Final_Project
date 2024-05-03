@@ -78,6 +78,8 @@ class Connection extends Thread {
 	int port;
 	int id;
 	String name;
+	int wrooms;
+	int frooms;
 
 	Socket s;
 	Socket connection;
@@ -103,6 +105,16 @@ class Connection extends Thread {
 		Central.setId(Central.getId() + 1);
 	}
 
+	//Checks if a number is an int
+	public boolean isInteger(String x) {
+		try {
+			Integer.parseInt(x);
+			return true;
+		}catch (NumberFormatException i) {
+			return false;
+		}
+	}
+
 	//Checks if the connection is still alive
 	public boolean isConnectionAlive(String hostname, int port) {
 		boolean alive = false;
@@ -118,7 +130,12 @@ class Connection extends Thread {
 			out.println("Heartbeat");
 			out.flush();
 			String line = input.readLine();
-			if(line.contentEquals("Heartbeat")) {
+
+			String [] rooms = line.split(",");
+			if(isInteger(rooms[0]) && isInteger(rooms[1])) {
+
+				wrooms = Integer.parseInt(rooms[0]);
+				frooms= Integer.parseInt(rooms[1]);
 				socket.close();
 				alive = true;
 			}
@@ -133,7 +150,7 @@ class Connection extends Thread {
 
 	//Gets Fitting Room Server
 	public Connection getServerConnection() {
-	
+	System.out.println(153);
 		while(Central.SL.tryAcquire() != true) {
 
 		}
@@ -141,17 +158,26 @@ class Connection extends Thread {
 		ArrayList<Connection> server = Central.getServers();
 		Connection fittingroom = null;
 
-		if(server.size() == 0) {
+		if(server.size() == 0 ) {
 			Central.SL.release();
 			return null;
-		}else if(index == server.size()) {
-			index = 0;
+		}else {
+		for(int i = 0; i < server.size(); i ++) {
+			fittingroom = server.get(index);
+			if(fittingroom.frooms != 0) {
+				Central.SL.release();
+				return fittingroom;
+			}else if (fittingroom.wrooms != 0) {
+				Central.SL.release();
+				return fittingroom;
+			}
 		}
-		fittingroom = server.get(index);
+
 
 		Central.SL.release();
 
 		return fittingroom;
+		}
 	}
 
 	@Override
@@ -217,6 +243,7 @@ class Connection extends Thread {
 			if(FittingRoom == null) {
 				out.println("No fitting room servers at this time.");
 				out.flush();
+
 				line = input.readLine();
 				while(!line.equalsIgnoreCase("RECEIVED")){
 					line = input.readLine();
@@ -253,6 +280,9 @@ class Connection extends Thread {
 						//Reads from Server
 						System.out.println(name + " At case 1");
 						line = ControllerIn.readLine();
+						while(line == null) {
+							line = ControllerIn.readLine();
+						}
 						System.out.println("From: " + ServerName + ":" + line + "\n");
 						task++;
 						break;
@@ -280,10 +310,12 @@ class Connection extends Thread {
 							}
 							index++;
 							Central.getSL().release();
-							
+
 							task = 5;
 							break;
 						}else if(line.equalsIgnoreCase("You have exited the room.")){
+							out.println(line);
+							out.flush();
 							task = 6;
 							break;
 						}else {
@@ -297,7 +329,7 @@ class Connection extends Thread {
 						//Reads from Client
 						System.out.println(name + " At case 3\n");
 						line = input.readLine();
-						
+
 						task = 4;
 						break;
 
@@ -305,12 +337,12 @@ class Connection extends Thread {
 						//Sends Message to Server From Client
 						System.out.println(name + " At case 4");
 						System.out.println("From: " + name + ":" + line + " To: " + ServerName + "\n");
-						
+
 						ControllerOut.println(line);
 						ControllerOut.flush();
 						task = 1;
 						break;
-						
+
 
 					case 5:
 						//Fitting Room Server is full
@@ -325,7 +357,7 @@ class Connection extends Thread {
 							while(!line.equalsIgnoreCase("RECIEVED")){
 								line = input.readLine();
 							}
-						
+
 							task = 6;
 							break;
 					}else {
@@ -339,7 +371,7 @@ class Connection extends Thread {
 
 						ControllerOut.println("FITQUERY");
 						ControllerOut.flush();
-						
+
 						task = 1;
 					}
 
@@ -358,8 +390,8 @@ class Connection extends Thread {
 			System.out.println(name + " has Disconnected.");
 			}
 			}catch(Exception e) {
-				
-					
+
+
 					if(input != null) {
 						input.close();
 					}
