@@ -48,7 +48,7 @@ public class FittingRoom {
         try {
             LogManager.getLogManager().reset();
             Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-            FileHandler fh = new FileHandler("FittingRoom.log", true);
+            FileHandler fh = new FileHandler("FittingRoom.txt", true);
             fh.setFormatter(new SimpleFormatter());
             logger.addHandler(fh);
             logger.setLevel(Level.INFO);
