@@ -56,7 +56,7 @@ public class Client {
 				String message = "";
 				while (task < 9) {
 					if (task > 1) {
-						if (!message.contains("Client has entered room")) {
+						if (!message.contains("Client has entered room") || !message.contains("A room is now free")) {
 							System.out.println("listening");
 							message = br.readLine();
 							System.out.println("heard");
