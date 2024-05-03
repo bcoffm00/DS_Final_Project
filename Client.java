@@ -58,7 +58,9 @@ public class Client {
 				while (task < 9) {
 					if (task > 1) {
 						if (!message.contains("Client has entered room") || close) {
+							System.out.println("listening");
 							message = br.readLine();
+							System.out.println("heard");
 							close = false;
 						}
 						System.out.println(message + " to: " + cliName);
@@ -111,6 +113,7 @@ public class Client {
 								} else if (message.contains("Both fitting rooms and waiting room are full")){
 									task = 2;
 									System.out.println("\t\t" + cliName + " all fitting and waiting options are full, disconecting");
+									
 									//All fitting room and waiting rooms are full disconnecting
 
 								} else if(message.contains("You have exited the room.")) {
