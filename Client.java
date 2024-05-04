@@ -250,14 +250,20 @@ public class Client {
 							//Redirects back to task 2 which will read a message and processes connected or not connected
 							task = 2;
 							break;
-						}
-						
-						///ANYTHING PAST THIS POINT IN TASK 9 ASSUMES MESSAGING AND READING WAS SUCCESSFULL IN PRIOR TASKS
-						if (message.contains("RECEIVED")) {
+						} else if (message.contains("RECEIVED")) {
 							//MESSAGE HANDLING, MESSAGE READ IN SUCCESSFULLY DURING TASK 5
+							System.out.println("\t\t\t\t" + this.getTName() + ", Exited fitting room, closing connections");
 							//message successful move onto task 11
 							task++;
 							break;
+						else {
+							System.out.println("Error in task 10, closing connections");
+							task++;
+							break;
+						}
+						
+						///ANYTHING PAST THIS POINT IN TASK 9 ASSUMES MESSAGING AND READING WAS SUCCESSFULL IN PRIOR TASKS
+						
 						}
 					case 11:
 						//Task 11, close all connections
