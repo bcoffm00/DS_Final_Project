@@ -244,7 +244,7 @@ public class Client {
 							task = 1;
 							break;
 							////////////////////////////////////////////////////////
-						} else if (message.equalsIgnoreCase("disconnect")) {
+						} else if (message.contains("DISCONNECT")) {
 							//ERROR HANDLING, FITTING ROOM CRASHED
 							System.out.println("\t\t\t\t" + this.getTName() + ", Fitting Room Crashed, Redirecting");
 							//Redirects back to task 2 which will read a message and processes connected or not connected
@@ -253,7 +253,7 @@ public class Client {
 						}
 						
 						///ANYTHING PAST THIS POINT IN TASK 9 ASSUMES MESSAGING AND READING WAS SUCCESSFULL IN PRIOR TASKS
-						if (message.equalsIgnoreCase("RECEIVED")) {
+						if (message.contains("RECEIVED")) {
 							//MESSAGE HANDLING, MESSAGE READ IN SUCCESSFULLY DURING TASK 5
 							//message successful move onto task 11
 							task++;
