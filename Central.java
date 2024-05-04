@@ -71,14 +71,23 @@ public class Central{
 		int wrooms;
 		int frooms;
 		
+		/**
+		 * Constructor for Connection class
+		 * Passes in the socket of the machine
+		 * @param connection
+		 */
 		public Connection(Socket connection) {
 			this.connection = connection;
 			ip = connection.getInetAddress().getHostAddress();
 			id++;
 		}
 		
-		
-		//If type is server
+		/**
+		 * Adds Server to the List of servers
+		 * If it is disconnected it removes from
+		 * the list of servers
+		 */
+		//If type is server this is called in the run method
 		public void Server() {
 			System.out.println("Connected to Server " + id + " At " + ip);
 			name = type+"-"+id+"-"+ip;
@@ -113,7 +122,12 @@ public class Central{
 			
 		}
 		
-		//If type is client
+		/**
+		 * Manages the messages between a client and server
+		 * Reroutes clients if Server goes down
+		 * 
+		 */
+		//If type is client this is called in the run method
 		public void Client() {
 			BufferedReader ServerIn = null;
 			PrintWriter ServerOut = null;
@@ -157,6 +171,7 @@ public class Central{
 								}
 							
 							}else {
+								connectionOut.println("CONNECTED," + Server.ip);
 								ServerOut = new PrintWriter(Server.connection.getOutputStream());
 								ServerIn = new BufferedReader(new InputStreamReader(Server.connection.getInputStream()));
 								task = 1;
@@ -216,6 +231,11 @@ public class Central{
 			
 		}
 		
+		/**
+		 * Checks if the string x can be parsed as an Integer
+		 * @param x String
+		 * @return true if x can be parsed false otherwise
+		 */
 		//Checks if a number is an int
 		public boolean isInteger(String x) {
 			try {
@@ -227,6 +247,15 @@ public class Central{
 		}
 		
 		//Checks if connection is alive
+		/**
+		 * Checks if a machine of a particular socket is alive by
+		 * periodically sending messages
+		 * This also sets the amount of waiting rooms and fitting rooms
+		 * are available at the moment
+		 * @param hostname ip address of the machine
+		 * @param port the port the machine is listening to
+		 * @return true if it is still alive false otherwise
+		 */
 		public boolean isConnectionAlive(String hostname, int port) {
 			boolean alive = false;
 			SocketAddress address = new  InetSocketAddress(hostname,port);
@@ -259,6 +288,12 @@ public class Central{
 			return alive;
 		}
 		
+		/**
+		 * This goes through the list of servers and return a Connection with
+		 * the first available waiting room or fitting room spot.
+		 * @return Returns a connection
+		 */
+		// Gets server by using round robin
 		public Connection getServerConnection() {
 			System.out.println(153);
 				while(Central.getAccess().tryAcquire() != true) {
