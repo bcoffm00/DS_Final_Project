@@ -92,14 +92,14 @@ public class Client {
 			String message = "";
 			
 			int errTask = -1;			
-			while (task <= 9) {
+			while (task <= 11) {
 				//Main switch case of tasks to loop through
 				switch (task) {
 					case 0:
 						//Task 0, THIS IS AN ERROR TASK, ALL UNKNOWN SEQUENCING RELATED ERRORS SHOULD BE REDIRECTED HERE
 						//Prints error message followed by setting task to whichever task closes connections
 						System.out.println("Error in sequencing at " + errTask);
-						task = 9;
+						task = 11;
 						break;
 						
 						
@@ -108,7 +108,7 @@ public class Client {
 						//THE ONLY POSSIBLE SOURCES OF INPUT RELATED ERRORS SHOULD BE TASK 2, OR, TASK 4
 						//Prints error message followed by setting the task to whichever task closes connections
 						System.out.println("Error in processing input at " + errTask);
-						task = 9;
+						task = 11;
 						break;
 						
 						
@@ -142,7 +142,7 @@ public class Client {
 							//MESSAGE HANDLING, MESSAGE READ IN SUCCESSFULLY DURING TASK 2
 							System.out.println("\t\t\t" + this.getTName() + ", No space in fitting rooms or no fitting rooms available");
 							//message successful move onto task 8
-							task = 9;
+							task = 11;
 							break;
 						} else {
 							//UNKNOWN ERROR, ISSUE IN SEQUENCING MOST LIKELY OR SPELLING
@@ -226,9 +226,40 @@ public class Client {
 						task++;
 						break;
 						
-						
 					case 9:
-						//Task 9, close all connections
+						//Task 9, Read in a message from the central server which should be either {"RECEIVED", or, "DISCONNECT"}
+						message = this.readMessage(task);
+						//Moves onto task 10
+						task++;
+						break;
+						
+						
+					case 10:
+						//Task 10, parses message from task 9 and redirects accordingly
+						if (message.equalsIgnoreCase("")) {
+							//ERROR HANDLING, MESSAGE FAILED TO BE READ IN TASK 5///
+							errTask = 9;
+							//redirect to input error task
+							task = 1;
+							break;
+							////////////////////////////////////////////////////////
+						} else if (message.equalsIgnoreCase("disconnect")) {
+							//ERROR HANDLING, FITTING ROOM CRASHED
+							System.out.println("\t\t\t\t" + this.getTName() + ", Fitting Room Crashed, Redirecting");
+							//Redirects back to task 2 which will read a message and processes connected or not connected
+							task = 2;
+							break;
+						}
+						
+						///ANYTHING PAST THIS POINT IN TASK 9 ASSUMES MESSAGING AND READING WAS SUCCESSFULL IN PRIOR TASKS
+						if (message.equalsIgnoreCase("RECEIVED")) {
+							//MESSAGE HANDLING, MESSAGE READ IN SUCCESSFULLY DURING TASK 5
+							//message successful move onto task 11
+							task++;
+							break;
+						}
+					case 11:
+						//Task 11, close all connections
 						if (this.toCentral != null) {
 							this.toCentral.close();
 						} if (this.fromCentral != null) {
