@@ -256,7 +256,7 @@ public class Client {
 							//message successful move onto task 11
 							task++;
 							break;
-						else {
+						} else {
 							System.out.println("Error in task 10, closing connections");
 							task++;
 							break;
