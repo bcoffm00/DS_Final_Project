@@ -72,8 +72,8 @@ public class Central{
 	static class Connection extends Thread{
 		String type;
 		String ip;
-		int ServerID = 0;
-		int ClientID = 0;
+		static int ServerID = 0;
+		static int ClientID = 0;
 		String name;
 		Socket connection;
 		
@@ -114,13 +114,9 @@ public class Central{
 
 
 			while(running) {
-				try {
-					Thread.sleep(2000);
+				
 					running = isConnectionAlive(ip,32005);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				
 			}
 
 			while(!Central.getAccess().tryAcquire()) {
@@ -146,10 +142,12 @@ public class Central{
 			System.out.println("Connected to Client " + ClientID + " At " + ip);
 			name = type+"-"+ClientID+"-"+ip;
 					int task = 0;
+					boolean error = false;
 					boolean clientTurn = false;
 					boolean serverTurn = false;
 					String line = "";
 					Connection Server = null;
+					Socket s = null;
 					FIRST:
 					while(task < 9) {
 					try {
@@ -159,12 +157,17 @@ public class Central{
 						}else if(serverTurn) {
 							line = ServerIn.readLine();
 						}
+						if(error) {
+							connectionOut.println("disconnect");
+							connectionOut.flush();
+							error = false;
+							task = 0;
+						}
 						
 						switch(task){
 							// Tries to connect to FittingRoom
 						case 0:
 							Server = getServerConnection();
-							
 							if(Server == null) {
 								System.out.println("SENDING NOTCONNECTED TO: " + name);
 								connectionOut.println("NOTCONNECTED");
@@ -181,7 +184,7 @@ public class Central{
 									
 									task = 1;
 									line = "";
-									Socket s = new Socket(Server.ip,32005);
+									s = new Socket(Server.ip,32005);
 									
 									ServerOut = new PrintWriter(s.getOutputStream());
 									ServerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -203,6 +206,15 @@ public class Central{
 									break;
 								
 						case 2:// Message sent to client from Server
+							if(line == null) {
+								System.out.println("Fitting Room At: "+ Server.name + " Disconnected restarting");
+								error = true;
+								clientTurn = false;
+								serverTurn = false;
+								task = 0;
+								break;
+										
+							}
 							System.out.println(Server.name + " Sending: " + line + " to " + name + "\n");
 							if(line.equalsIgnoreCase("ENTERED")) {
 								connectionOut.println(line + "," + Server.ip);
@@ -230,9 +242,29 @@ public class Central{
 							
 							}
 						}catch(Exception e) {
-							System.out.println("An error Occured");
-								task = 0;
-								break FIRST;
+							
+								if(s == null) {
+									System.out.println("Fitting Room At: "+ Server.name + " Disconnected restarting");
+									error = true;
+								}else {
+									System.out.println("Some other error occured closing sockets");
+									try {
+									if(ServerIn != null) {
+										ServerIn.close();
+									}
+									if(ServerOut != null) {
+										ServerOut.close();
+									}
+									if(s != null) {
+										s.close();
+									}
+									return;
+									}catch(Exception e1){
+										return;
+									}
+									
+								}
+								
 							} 
 						}
 				
