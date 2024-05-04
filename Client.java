@@ -6,9 +6,9 @@ import java.net.Socket;
 
 public class Client {
 	public static void main (String[] args) {
-		final String CENTRAL_IP = "10.183.240.31";
+		final String CENTRAL_IP = "192.168.0.0";
 		final int CENTRAL_PORT = 32005;
-		final int NUM_OF_CLIENTS = 3;
+		final int NUM_OF_CLIENTS = 4;
 		
 		for (int i = 1; i <= NUM_OF_CLIENTS; i++) {
 			//Creates N number of threads as specified by the third program argument
@@ -122,7 +122,7 @@ public class Client {
 						
 					case 3:
 						//Task 3, Processes the message received in task 2 and redirect accordingly
-						if (message.equalsIgnoreCase("")) {
+						if (message == null) {
 							//ERROR HANDLING, MESSAGE FAILED TO BE READ IN TASK 2///
 							errTask = 2;
 							//redirect to input error task
@@ -142,6 +142,7 @@ public class Client {
 							//MESSAGE HANDLING, MESSAGE READ IN SUCCESSFULLY DURING TASK 2
 							System.out.println("\t\t\t" + this.getTName() + ", No space in fitting rooms or no fitting rooms available");
 							//message successful move onto task 8
+							
 							task = 11;
 							break;
 						} else {
@@ -339,7 +340,7 @@ public class Client {
 				//attempts to read in message via bufferedReader
 				
 				message = this.fromCentral.readLine();
-				
+			
 				//If message is read successfully then return message
 				System.out.println("Successfully read in message, [" + message + "] from central server at task: " + a);
 				return message;
