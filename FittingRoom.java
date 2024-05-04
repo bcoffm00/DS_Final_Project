@@ -9,7 +9,7 @@ import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
 public class FittingRoom {
-	final static String CENTRAL_IP = "10.183.240.31";
+	final static String CENTRAL_IP = "192.168.0.0";
 	final static int CENTRAL_PORT = 32005;
 	
 	public static void main (String[] args) {
@@ -66,7 +66,7 @@ public class FittingRoom {
 			PrintWriter toConnect = new PrintWriter(centralServer.getOutputStream());
 			
 			toConnect.println("SERVER");toConnect.flush();
-			centralServer.close();
+			
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -188,6 +188,7 @@ public class FittingRoom {
 						
 						case 7:
 							this.sendMessage(this.par.exit());
+							task++;
 							break;
 						
 						case 8:
@@ -272,7 +273,11 @@ public class FittingRoom {
 		}
 		
 		public fitConnection deQueue () {
+			if(this.waitRooms.isEmpty()) {
+				return null;
+			}else {
 			return this.waitRooms.remove();
+			}
 		}
 		
 		public int stateCheck () {
@@ -297,6 +302,7 @@ public class FittingRoom {
 		
 		public String enter (fitConnection a) {
 			if (this.ChangingRooms.tryAcquire()) {
+				
 				this.WaitingRooms.deQueue();
 				return "ENTERED";
 			} else {
