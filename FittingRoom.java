@@ -173,17 +173,20 @@ public class FittingRoom{
             // Messaging handler for modularization
             try {
                 LOGGER.info("Attempting to send message, [" + message + "] to central server");
+                System.out.println("Attempting to send message, [" + message + "] to central server");
                 // Attempts to send a message via the print writer
 
                 this.toConnect.println(message.toUpperCase());
                 this.toConnect.flush();
 
                 LOGGER.info("Successfully sent message, [" + message + "] to central server");
+                System.out.println("Successfully sent message, [" + message + "] to central server");
                 // If message sends successfully then return true
                 return true;
             } catch (Exception e) {
                 // If message fails to send then return false
                 LOGGER.info("Failed to send message, [" + message + "] to central server");
+                System.out.println("Failed to send message, [" + message + "] to central server");
                 return false;
             }
         }
@@ -198,15 +201,18 @@ public class FittingRoom{
             // Message receiver handler for modularization
             try {
                 LOGGER.info("Reading message from central server");
+                System.out.println("Reading message from central server");
                 // attempts to read in message via bufferedReader
 
                 message = this.fromConnect.readLine();
 
                 // If message is read successfully then return message
                 LOGGER.info("Received message from central server: " + message);
+                System.out.println("Received message from central server: " + message);
                 return message;
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Error reading message from central server", ex);
+                System.out.println("Reading message from central server");
                 // If message fails to be read then return empty string
                 return message;
             }
