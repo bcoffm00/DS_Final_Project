@@ -368,28 +368,40 @@ public class FittingRoom{
         }
 
         public boolean enQueue(fitConnection a) {
+            while (!access.tryAcquire()) {}
             if (this.waitRooms.size() < this.numRooms) {
                 this.waitRooms.add(a);
+                access.release();
                 return true;
             }
-
+            access.release();
             return false;
         }
 
         public fitConnection peek() {
-            return this.waitRooms.peek();
+            while (!access.tryAcquire()) {}
+            fitConnection a = this.waitRooms.peek();
+            access.release();
+            return a;
         }
 
         public fitConnection deQueue() {
+            while (!access.tryAcquire()) {}
             if (this.waitRooms.isEmpty()) {
+                access.release();
                 return null;
             } else {
-                return this.waitRooms.remove();
+                fitConnection a = this.waitRooms.remove();
+                access.release();
+                return a;
             }
         }
 
         public int stateCheck() {
-            return this.waitRooms.size();
+            while (!access.tryAcquire()) {}
+            int a = this.waitRooms.size();
+            access.release();
+            return a;
         }
 
     }
