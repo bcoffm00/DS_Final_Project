@@ -1,3 +1,10 @@
+
+/********************************************************
+ * Name:   		Brody Coffman, Tony Aldana and Yash Patel
+ * Problem Set:	Final Group project
+ * Due Date :	5/2/24
+ *******************************************************/
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,413 +17,452 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
-
+/**
+ * This is the Central server Class This class starts a server that listens for
+ * messages from a server or client and handles them accordingly.
+ *
+ * @author tonya
+ *
+ */
 public class Central {
+	private static Semaphore access = new Semaphore(1);
+	private static ArrayList<Connection> ServerList = new ArrayList<Connection>();
+	private static final Logger LOGGER = Logger.getLogger(Central.class.getName());
 
-//Control access to Server List
-public static Semaphore SL = new Semaphore(1);
+	static {
+		setupLogger();
+	}
 
-public static int Id = 0;
+	private static void setupLogger() {
+		try {
+			LogManager.getLogManager().reset();
+			Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+			FileHandler fh = new FileHandler("Central.log", true);
+			fh.setFormatter(new SimpleFormatter());
+			logger.addHandler(fh);
+			logger.setLevel(Level.INFO);
+		} catch (IOException e) {
+			LOGGER.log(Level.SEVERE, "Error setting up logger", e);
+		}
+	}
 
+	public static Semaphore getAccess() {
+		return access;
+	}
 
+	public static ArrayList<Connection> getServerList() {
+		return ServerList;
+	}
 
-//List of fitting room Servers
-public static ArrayList<Connection> Servers = new ArrayList<Connection>();
+	public static boolean checkList(Connection a) {
+		while (access.tryAcquire() != true) {
 
-public static ArrayList<Connection> getServers(){
-	return Servers;
-}
+		}
+		boolean contained = ServerList.contains(a);
+		access.release();
+		return contained;
+	}
 
-public static Semaphore getSL() {
-	return SL;
-}
-
-public static int getId() {
-	return Id;
-}
-
-public static void setId(int x) {
-	Id = x;
-}
-
-	public static void main(String[] args) throws IOException {
+	public static void main(String args[]) {
 		int port = 32005;
+		int n = 0;
 
+		try {
+			// Start Server
+			ServerSocket server = new ServerSocket(port);
+			System.out.println("Server started");
+			while (true) {
 
+				Socket connection = server.accept();
 
-		ServerSocket controller = new ServerSocket(port);
+				Connection x = new Connection(connection);
 
-
-		System.out.println("Server started");
-
-	//Listens For Connections
-
-		while (true) {
-			try {
-
-				Socket connection = controller.accept();
-
-				Connection x = new Connection(connection,port,Id);
 				x.start();
 
-			} catch (Exception e) {
-				controller.close();
-				e.printStackTrace();
 			}
-		}
-
-	}
-
-}
-
-class Connection extends Thread {
-	static int index = 0;
-
-	String ClientIP = null;
-	String ServerIP = null;
-	int port;
-	int id;
-	String name;
-	int wrooms;
-	int frooms;
-
-	Socket s;
-	Socket connection;
-	private BufferedReader input = null;
-	private PrintWriter out = null;
-
-	public Socket getConnection() {
-		return connection;
-	}
-
-	public void setConnection(Socket connection) {
-		this.connection = connection;
-	}
-
-	private BufferedReader ControllerIn = null;
-	private PrintWriter ControllerOut = null;
-
-	public Connection(Socket connection, int port, int Id) {
-		this.connection = connection;
-		this.port = port;
-		this.id = Id;
-
-		Central.setId(Central.getId() + 1);
-	}
-
-	//Checks if a number is an int
-	public boolean isInteger(String x) {
-		try {
-			Integer.parseInt(x);
-			return true;
-		}catch (NumberFormatException i) {
-			return false;
-		}
-	}
-
-	//Checks if the connection is still alive
-	public boolean isConnectionAlive(String hostname, int port) {
-		boolean alive = false;
-		SocketAddress address = new  InetSocketAddress(hostname,port);
-		Socket socket = new Socket();
-		int timeout = 2000;
-		PrintWriter out;
-		BufferedReader input;
-		try {
-			socket.connect(address,timeout);
-			out =  new PrintWriter(socket.getOutputStream());
-			input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			out.println("Heartbeat");
-			out.flush();
-			String line = input.readLine();
-
-			String [] rooms = line.split(",");
-			if(isInteger(rooms[0]) && isInteger(rooms[1])) {
-
-				wrooms = Integer.parseInt(rooms[0]);
-				frooms= Integer.parseInt(rooms[1]);
-				socket.close();
-				alive = true;
-			}
-
-		}catch(SocketTimeoutException e) {
-			return alive;
 		} catch (IOException e) {
+
+			LOGGER.log(Level.SEVERE, "Exception occurred", e);
+		}
+
+	}
+
+	/**
+	 * Manage Connections for the Central Server
+	 *
+	 * @author tonya
+	 *
+	 */
+	// Connection Class
+	static class Connection extends Thread {
+		String type;
+		String ip;
+		static int ServerID = 0;
+		static int ClientID = 0;
+		String name;
+		Socket connection;
+
+		BufferedReader connectionIn;
+		PrintWriter connectionOut;
+		int wrooms;
+		int frooms;
+
+		/**
+		 * Constructor for Connection class Passes in the socket of the machine
+		 *
+		 * @param connection
+		 */
+		public Connection(Socket connection) {
+			this.connection = connection;
+			ip = connection.getInetAddress().getHostAddress();
+
+		}
+
+		/**
+		 * Adds Server to the List of servers If it is disconnected it removes from the
+		 * list of servers
+		 */
+		// If type is server this is called in the run method
+		public void Server() {
+			System.out.println("Connected to Server " + ServerID + " At " + ip);
+			LOGGER.info("Connected to Server " + ServerID + " At " + ip);
+			name = type + "-" + ServerID + "-" + ip;
+
+			while (Central.getAccess().tryAcquire() != true) {
+
+			}
+
+			Central.getServerList().add(this);
+			Central.getAccess().release();
+
+			boolean running = isConnectionAlive(ip, 32005);
+
+			while (running) {
+
+				running = isConnectionAlive(ip, 32005);
+
+			}
+
+			while (!Central.getAccess().tryAcquire()) {
+
+			}
+			Central.getServerList().remove(this);
+			Central.getAccess().release();
+
+			System.out.println("Server at: " + ip + " has disconnected");
+			LOGGER.info("Server at: " + ip + " has disconnected");
+
+		}
+
+		/**
+		 * Manages the messages between a client and server Reroutes clients if Server
+		 * goes down
+		 *
+		 * @throws IOException
+		 *
+		 */
+		// If type is client this is called in the run method
+		public void Client() {
+			BufferedReader ServerIn = null;
+			PrintWriter ServerOut = null;
+			System.out.println("Connected to Client " + ClientID + " At " + ip);
+			LOGGER.info("Connected to Client " + ClientID + " At " + ip);
+
+			name = type + "-" + ClientID + "-" + ip;
+			int task = 0;
+			boolean error = false;
+			boolean clientTurn = false;
+			boolean serverTurn = false;
+			String line = "";
+			Connection Server = null;
+			Socket s = null;
+			FIRST: while (task < 9) {
+				try {
+					if (clientTurn) {
+						line = connectionIn.readLine();
+
+					} else if (serverTurn) {
+						line = ServerIn.readLine();
+					}
+					if (error) {
+						connectionOut.println("disconnect");
+						connectionOut.flush();
+						error = false;
+						task = 0;
+					}
+
+					switch (task) {
+					// Tries to connect to FittingRoom
+					case 0:
+						Server = getServerConnection();
+						if (Server == null) {
+							System.out.println("SENDING NOTCONNECTED TO: " + name);
+							LOGGER.info("SENDING NOTCONNECTED TO: " + name);
+
+							connectionOut.println("NOTCONNECTED");
+							connectionOut.flush();
+
+							return;
+
+						} else {
+							System.out.println("SENDING CONNECTED TO: " + name);
+							LOGGER.info("SENDING CONNECTED TO: " + name);
+
+							connectionOut.println("CONNECTED," + Server.ip);
+							connectionOut.flush();
+
+							clientTurn = true;
+							serverTurn = false;
+
+							task = 1;
+							line = "";
+							s = new Socket(Server.ip, 32005);
+
+							ServerOut = new PrintWriter(s.getOutputStream());
+							ServerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
+
+							System.out.println("Sending [fitquery] TO: " + Server.name);
+							LOGGER.info("Sending [fitquery] TO: " + Server.name);
+
+							ServerOut.println("fitquery");
+							ServerOut.flush();
+							break;
+						}
+					case 1:
+						// Message Sent to Server from Client
+						System.out.println(name + " Sending: " + line + " to " + Server.name + "\n");
+						LOGGER.info(name + " Sending: " + line + " to " + Server.name);
+
+						ServerOut.println(line);
+						ServerOut.flush();
+						serverTurn = true;
+						clientTurn = false;
+						task = 2;
+						break;
+
+					case 2:// Message sent to client from Server
+						if (line == null) {
+							System.out.println("Fitting Room At: " + Server.name + " Disconnected restarting");
+							LOGGER.info("Fitting Room At: " + Server.name + " Disconnected restarting");
+
+							error = true;
+							clientTurn = false;
+							serverTurn = false;
+							task = 0;
+							break;
+
+						}
+						System.out.println(Server.name + " Sending: " + line + " to " + name + "\n");
+						LOGGER.info(Server.name + " Sending: " + line + " to " + name + "\n");
+
+						if (line.equalsIgnoreCase("ENTERED")) {
+							connectionOut.println(line + "," + Server.ip);
+							connectionOut.flush();
+							clientTurn = true;
+							serverTurn = false;
+							task = 1;
+							break;
+						}
+						if (line.equalsIgnoreCase("WAITING")) {
+							connectionOut.println(line + "," + Server.ip);
+							connectionOut.flush();
+							clientTurn = false;
+							serverTurn = true;
+							task = 2;
+							break;
+						}
+						if (line.equalsIgnoreCase("RECEIVED")) {
+							connectionOut.println(line + "," + Server.ip);
+							connectionOut.flush();
+							clientTurn = false;
+							serverTurn = false;
+							return;
+						}
+
+					}
+				} catch (Exception e) {
+
+					if (s == null) {
+						System.out.println("Fitting Room At: " + Server.name + " Disconnected restarting");
+						LOGGER.info("Fitting Room At: " + Server.name + " Disconnected restarting");
+
+						error = true;
+					} else {
+						System.out.println("Some other error occured closing sockets");
+						LOGGER.log(Level.SEVERE, "Some other error occured closing sockets", e);
+
+						try {
+							if (ServerIn != null) {
+								ServerIn.close();
+							}
+							if (ServerOut != null) {
+								ServerOut.close();
+							}
+							if (s != null) {
+								s.close();
+							}
+							return;
+						} catch (Exception e1) {
+							return;
+						}
+
+					}
+
+				}
+			}
+
+		}
+
+		/**
+		 * Checks if the string x can be parsed as an Integer
+		 *
+		 * @param x String
+		 * @return true if x can be parsed false otherwise
+		 */
+		// Checks if a number is an int
+		public boolean isInteger(String x) {
+			try {
+				Integer.parseInt(x);
+				return true;
+			} catch (NumberFormatException i) {
+				return false;
+			}
+		}
+
+		// Checks if connection is alive
+		/**
+		 * Checks if a machine of a particular socket is alive by periodically sending
+		 * messages This also sets the amount of waiting rooms and fitting rooms are
+		 * available at the moment
+		 *
+		 * @param hostname ip address of the machine
+		 * @param port     the port the machine is listening to
+		 * @return true if it is still alive false otherwise
+		 */
+		public boolean isConnectionAlive(String hostname, int port) {
+			boolean alive = false;
+			SocketAddress address = new InetSocketAddress(hostname, port);
+			Socket socket = new Socket();
+			int timeout = 5000;
+			PrintWriter out;
+			BufferedReader input;
+			try {
+				socket.connect(address, timeout);
+				out = new PrintWriter(socket.getOutputStream());
+				input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				out.println("Heartbeat");
+				out.flush();
+				String line = input.readLine();
+
+				String[] rooms = line.split(",");
+				if (isInteger(rooms[0]) && isInteger(rooms[1])) {
+
+
+					wrooms = Integer.parseInt(rooms[0]);
+					frooms = Integer.parseInt(rooms[1]);
+
+					socket.close();
+					alive = true;
+				}
+
+			} catch (SocketTimeoutException e) {
+				return alive;
+			} catch (IOException e) {
+				return alive;
+			}
 			return alive;
 		}
-		return alive;
-	}
 
-	//Gets Fitting Room Server
-	public Connection getServerConnection() {
-	System.out.println(153);
-		while(Central.SL.tryAcquire() != true) {
+		/**
+		 * This goes through the list of servers and return a Connection with the first
+		 * available waiting room or fitting room spot.
+		 *
+		 * @return Returns a connection
+		 */
+		// Gets server by using round robin
+		public Connection getServerConnection() {
 
-		}
-
-		ArrayList<Connection> server = Central.getServers();
-		Connection fittingroom = null;
-
-		if(server.size() == 0 ) {
-			Central.SL.release();
-			return null;
-		}else {
-		for(int i = 0; i < server.size(); i ++) {
-			fittingroom = server.get(index);
-			if(fittingroom.frooms != 0) {
-				Central.SL.release();
-				return fittingroom;
-			}else if (fittingroom.wrooms != 0) {
-				Central.SL.release();
-				return fittingroom;
-			}
-		}
-
-
-		Central.SL.release();
-
-		return fittingroom;
-		}
-	}
-
-	@Override
-	public void run() {
-	try {
-		out = new PrintWriter(connection.getOutputStream());
-		input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-		System.out.println("Connected");
-
-		String line  =	input.readLine();
-		while(line == null) {
-			line  =	input.readLine();
-		}
-		//Keeps Track Of Connections
-		if(line.equalsIgnoreCase("server")) {
-			ServerIP = connection.getInetAddress().getHostAddress();
-			System.out.println("Connected to fitting room at: " + ServerIP);
-
-			name = "Server " + id + " at "+ ServerIP;
-			out.println("CONNECTED");
-			out.flush();
-
-			while(!Central.getSL().tryAcquire()) {
+			while (Central.getAccess().tryAcquire() != true) {
 
 			}
-			Central.getServers().add(this);
 
-			Central.getSL().release();
+			ArrayList<Connection> server = Central.getServerList();
+			Connection fittingroom = null;
 
-			String hostaddress = ServerIP;
-			int port = 32005;
+			if (server.size() == 0) {
+				Central.getAccess().release();
+				return null;
+			} else {
 
-			boolean running = isConnectionAlive(hostaddress,port);
-
-
-			while(running) {
-				try {
-					Thread.sleep(2000);
-					running = isConnectionAlive(hostaddress,port);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				for (int i = 0; i < server.size(); i++) {
+					fittingroom = server.get(i);
+					if (fittingroom.frooms != 0) {
+						Central.getAccess().release();
+						return fittingroom;
+					}
 				}
-			}
 
-			while(!Central.getSL().tryAcquire()) {
-
-			}
-			Central.getServers().remove(this);
-			Central.getSL().release();
-
-			System.out.println(name +" has disconnected");
-
-		}else if(line.equalsIgnoreCase("client")) {
-			try {
-			ClientIP = connection.getInetAddress().getHostAddress();
-
-			System.out.println("Connected to Client at: " + ClientIP);
-
-			// Controller can now push messages
-
-			Connection FittingRoom =  getServerConnection();
-			if(FittingRoom == null) {
-				out.println("No fitting room servers at this time.");
-				out.flush();
-
-				line = input.readLine();
-				while(!line.equalsIgnoreCase("RECEIVED")){
-					line = input.readLine();
-				}
-				System.out.println(name + " At 223 " + line);
-				connection.close();
-				System.out.println("Client at: " + ClientIP + " has Disconnected.");
-			}else {
-			String hostaddress = FittingRoom.ServerIP;
-			Socket s = new Socket(hostaddress, 32005);
-
-			String ServerName = FittingRoom.name;
-			name = "Client " + id + " at "+ ClientIP;;
-
-			//Get input/output for fitting room server
-			ControllerOut= new PrintWriter(s.getOutputStream());
-			ControllerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
-
-
-			ControllerOut.println("FITQUERY");
-			ControllerOut.flush();
-			int task = 1;
-
-			System.out.println("234");
-			while(task < 6) {
-				if(!Central.getServers().contains(FittingRoom)) {
-				System.out.println("237");
-
-
-
-				}else {
-					switch(task) {
-					case 1:
-						//Reads from Server
-						System.out.println(name + " At case 1");
-						line = ControllerIn.readLine();
-						while(line == null) {
-							line = ControllerIn.readLine();
-						}
-						System.out.println("From: " + ServerName + ":" + line + "\n");
-						task++;
-						break;
-
-					case 2:
-						//Sends the client message from Server
-						System.out.println(name + " At case 2");
-
-						System.out.println("From: " + ServerName + ":" + line + "To: " + name + "\n");
-						if(line.contains("Connected to Fitting Room Server. Type 'ENTER' to enter a room, 'EXIT' to leave a room or 'OVER' to disconnect.")) {
-							out.println(line);
-							out.flush();
-							task = 3;
-						} else if(line.contains("has entered room")) {
-
-							out.println(line);
-							out.flush();
-							task  = 3;
-							break;
-						}else if(line.equalsIgnoreCase("Both fitting rooms and waiting room are full. Please try again later.")){
-							out.println(line);
-							out.flush();
-							while(Central.getSL().tryAcquire() != true) {
-
-							}
-							index++;
-							Central.getSL().release();
-
-							task = 5;
-							break;
-						}else if(line.equalsIgnoreCase("You have exited the room.")){
-							out.println(line);
-							out.flush();
-							task = 6;
-							break;
-						}else {
-						out.println(line);
-						out.flush();
-						task = 1;
-						break;
-						}
-
-					case 3:
-						//Reads from Client
-						System.out.println(name + " At case 3\n");
-						line = input.readLine();
-
-						task = 4;
-						break;
-
-					case 4:
-						//Sends Message to Server From Client
-						System.out.println(name + " At case 4");
-						System.out.println("From: " + name + ":" + line + " To: " + ServerName + "\n");
-
-						ControllerOut.println(line);
-						ControllerOut.flush();
-						task = 1;
-						break;
-
-
-					case 5:
-						//Fitting Room Server is full
-						System.out.println(name + " At case 5\n");
-
-						s.close();
-						FittingRoom =  getServerConnection();
-						if(FittingRoom == null) {
-							out.println("No fitting room servers at this time.");
-							out.flush();
-							line = input.readLine();
-							while(!line.equalsIgnoreCase("RECIEVED")){
-								line = input.readLine();
-							}
-
-							task = 6;
-							break;
+				for (int i = 0; i < server.size(); i++) {
+					fittingroom = server.get(i);
+					if (fittingroom.wrooms != 0) {
+						Central.getAccess().release();
+						return fittingroom;
 					}else {
-						hostaddress = FittingRoom.ServerIP;
-						s = new Socket(hostaddress, 32005);
-						ServerName = FittingRoom.name;
-
-						ControllerOut= new PrintWriter(s.getOutputStream());
-						ControllerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
-
-
-						ControllerOut.println("FITQUERY");
-						ControllerOut.flush();
-
-						task = 1;
+						fittingroom = null;
 					}
-
 				}
 
-				}
-			}
+				Central.getAccess().release();
 
-			ControllerOut.close();
-			ControllerIn.close();
-			s.close();
-
-			input.close();
-			out.close();
-			connection.close();
-			System.out.println(name + " has Disconnected.");
-			}
-			}catch(Exception e) {
-
-
-					if(input != null) {
-						input.close();
-					}
-					if(out != null) {
-						out.close();
-					}
-
-					if(ControllerOut != null) {
-						ControllerOut.close();
-					}
-					if(ControllerIn != null) {
-						ControllerIn.close();
-					}
-					if(s != null) {
-						s.close();
-					}
-
-					System.out.println("Client at: " + name + " has Disconnected.");
-
+				return fittingroom;
 			}
 		}
 
-	} catch (IOException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
+		@Override
+		public void run() {
+
+			try {
+				connectionIn = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+				connectionOut = new PrintWriter(connection.getOutputStream());
+				String line = connectionIn.readLine();
+				if (line.contains("SERVER")) {
+					ServerID++;
+					type = "SERVER";
+					String[] temp = line.split(",");
+					frooms = Integer.parseInt(temp[1]);
+					wrooms = frooms * 2;
+					Server();
+				} else if (line.equalsIgnoreCase("CLIENT")) {
+					ClientID++;
+					type = "Client";
+					Client();
+				} else if (line.equalsIgnoreCase("HEARTBEAT")) {
+					connectionOut.println("HEARTBEAT");
+					connectionOut.flush();
+					return;
+
+				} else {
+					connection.close();
+					return;
+				}
+
+				System.out.println("Closing Connection at " + name);
+				LOGGER.info("Closing Connection at " + name);
+				connection.close();
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				LOGGER.log(Level.SEVERE, "Some other error occured closing sockets", e);
+			}
+
+		}
+
 	}
-	}
+
 }
