@@ -1,3 +1,9 @@
+/********************************************************
+ * Name:   		Brody Coffman, Tony Aldana and Yash Patel
+ * Problem Set:	Final Group project
+ * Due Date :	5/2/24
+ *******************************************************/
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,10 +16,41 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
+/**
+ * This is the Central server Class
+ * This class starts a server that listens
+ * for messages from a server or client and 
+ * handles them accordingly.
+ * @author tonya
+ *
+ */
 public class Central{
 	private static Semaphore access = new Semaphore(1);
 	private static ArrayList<Connection> ServerList = new ArrayList<Connection>();
+	private static final Logger LOGGER = Logger.getLogger(FittingRoom.class.getName());
+	
+	 static {
+	        setupLogger();
+	    }
+	 
+	    private static void setupLogger() {
+	        try {
+	            LogManager.getLogManager().reset();
+	            Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+	            FileHandler fh = new FileHandler("Central.txt", true);
+	            fh.setFormatter(new SimpleFormatter());
+	            logger.addHandler(fh);
+	            logger.setLevel(Level.INFO);
+	        } catch (IOException e) {
+	            LOGGER.log(Level.SEVERE, "Error setting up logger", e);
+	        }
+	    }
 
 	public static Semaphore getAccess() {
 		return access;
@@ -52,7 +89,7 @@ public class Central{
 			}
 		}catch (IOException e) {
 		
-			e.printStackTrace();
+			LOGGER.log(Level.SEVERE, "Exception occurred", e);
 		}
 
 		
@@ -101,6 +138,7 @@ public class Central{
 		//If type is server this is called in the run method
 		public void Server() {
 			System.out.println("Connected to Server " + ServerID + " At " + ip);
+			 LOGGER.info("Connected to Server " + ServerID + " At " + ip);
 			name = type+"-"+ServerID+"-"+ip;
 			
 			while(Central.getAccess().tryAcquire() != true) {
@@ -126,6 +164,7 @@ public class Central{
 			Central.getAccess().release();
 
 			System.out.println("Server at: " + ip+" has disconnected");
+			LOGGER.info("Server at: " + ip+" has disconnected");
 			
 		}
 		
@@ -140,6 +179,8 @@ public class Central{
 			BufferedReader ServerIn = null;
 			PrintWriter ServerOut = null;
 			System.out.println("Connected to Client " + ClientID + " At " + ip);
+			LOGGER.info("Connected to Client " + ClientID + " At " + ip);
+			
 			name = type+"-"+ClientID+"-"+ip;
 					int task = 0;
 					boolean error = false;
@@ -170,12 +211,17 @@ public class Central{
 							Server = getServerConnection();
 							if(Server == null) {
 								System.out.println("SENDING NOTCONNECTED TO: " + name);
+								LOGGER.info("SENDING NOTCONNECTED TO: " + name);
+								
 								connectionOut.println("NOTCONNECTED");
 								connectionOut.flush();
 								
 								return;
 								
 							}else {
+								System.out.println("SENDING CONNECTED TO: " + name);
+								LOGGER.info("SENDING CONNECTED TO: " + name);
+								
 								connectionOut.println("CONNECTED," + Server.ip);
 								connectionOut.flush();
 								
@@ -190,6 +236,8 @@ public class Central{
 									ServerIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
 									
 									System.out.println("Sending [fitquery] TO: " + Server.name);
+									LOGGER.info("Sending [fitquery] TO: " + Server.name);
+									
 									ServerOut.println("fitquery");
 									ServerOut.flush();
 									break;
@@ -197,6 +245,7 @@ public class Central{
 						case 1:
 							// Message Sent to Server from Client
 							System.out.println(name + " Sending: " + line + " to " + Server.name + "\n");
+							LOGGER.info(name + " Sending: " + line + " to " + Server.name);
 							
 									ServerOut.println(line);
 									ServerOut.flush();
@@ -208,6 +257,8 @@ public class Central{
 						case 2:// Message sent to client from Server
 							if(line == null) {
 								System.out.println("Fitting Room At: "+ Server.name + " Disconnected restarting");
+								LOGGER.info("Fitting Room At: "+ Server.name + " Disconnected restarting");
+								
 								error = true;
 								clientTurn = false;
 								serverTurn = false;
@@ -216,6 +267,9 @@ public class Central{
 										
 							}
 							System.out.println(Server.name + " Sending: " + line + " to " + name + "\n");
+							LOGGER.info(Server.name + " Sending: " + line + " to " + name + "\n");
+							
+							
 							if(line.equalsIgnoreCase("ENTERED")) {
 								connectionOut.println(line + "," + Server.ip);
 								connectionOut.flush();
@@ -245,9 +299,13 @@ public class Central{
 							
 								if(s == null) {
 									System.out.println("Fitting Room At: "+ Server.name + " Disconnected restarting");
+									LOGGER.info("Fitting Room At: "+ Server.name + " Disconnected restarting");
+									
 									error = true;
 								}else {
 									System.out.println("Some other error occured closing sockets");
+									LOGGER.log(Level.SEVERE, "Some other error occured closing sockets", e);
+									
 									try {
 									if(ServerIn != null) {
 										ServerIn.close();
@@ -348,10 +406,10 @@ public class Central{
 				}else {
 				for(int i = 0; i < server.size(); i ++) {
 					fittingroom = server.get(i);
-					if(fittingroom.frooms != 0) {
+					if(fittingroom.wrooms != 0) {
 						Central.getAccess().release();
 						return fittingroom;
-					}else if (fittingroom.wrooms != 0) {
+					}else if (fittingroom.frooms != 0) {
 						Central.getAccess().release();
 						return fittingroom;
 					}else {
@@ -377,20 +435,26 @@ public class Central{
 					ServerID++;
 					type = "SERVER";
 					Server();
-				}if(line.equalsIgnoreCase("CLIENT")){
+				}else if(line.equalsIgnoreCase("CLIENT")){
 					ClientID++;
 					type = "Client";
 					Client();
-				}else {
+				}else if(line.equalsIgnoreCase("HEARTBEAT")){
+					connectionOut.println("HEARTBEAT");
+					connectionOut.flush();
+					
+					}else {
 					connection.close();
+					return;
 				}
 				
 				System.out.println("Closing Connection at " + name);
+				LOGGER.info("Closing Connection at " + name);
 				connection.close();
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				LOGGER.log(Level.SEVERE, "Some other error occured closing sockets", e);
 			}
 			
 		}
