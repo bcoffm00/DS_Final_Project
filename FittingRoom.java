@@ -470,7 +470,7 @@ public class FittingRoom{
          */
         public int stateCheck() {
             while (!access.tryAcquire()) {}
-            int a = this.waitRooms.size();
+            int a = this.numRooms - this.waitRooms.size();
             access.release();
             return a;
         }
