@@ -33,7 +33,7 @@ import java.util.logging.SimpleFormatter;
 public class Central{
 	private static Semaphore access = new Semaphore(1);
 	private static ArrayList<Connection> ServerList = new ArrayList<Connection>();
-	private static final Logger LOGGER = Logger.getLogger(FittingRoom.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(Central.class.getName());
 	
 	 static {
 	        setupLogger();
