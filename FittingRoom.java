@@ -239,6 +239,7 @@ public class FittingRoom{
 
                         case 2:
                             if (message.equalsIgnoreCase("enter")) {
+                                System.out.println("Thread entering fitting room server");
                                 response = this.par.enter(this);
                                 task++;
                                 break;
@@ -254,19 +255,24 @@ public class FittingRoom{
 
                         case 4:
                             if (response.equalsIgnoreCase("waiting")) {
+                                System.out.println("\tThread entered waiting room");
                                 task = 5;
                                 break;
                             } else {
+                                System.out.println("\tThread entered changing room");
                                 task = 6;
                                 break;
                             }
 
                         case 5:
+                            System.out.println("\t\tThread checking for head of the list");
                             while (!this.par.compare(this)) {
                             }
+                            System.out.println("\t\tThread waiting for changing room to be open");
                             while (response.equalsIgnoreCase("waiting")) {
                                 response = this.par.enter(this);
                             }
+                            System.out.println("\t\tInforming thread it is in changing room");
                             this.sendMessage(response);
                             task++;
                             break;
@@ -277,11 +283,13 @@ public class FittingRoom{
                             break;
 
                         case 7:
+                            System.out.println("\t\t\tThread exiting changing room");
                             this.sendMessage(this.par.exit());
                             task++;
                             break;
 
                         case 8:
+                            System.out.println("\t\t\t\tClosing Thread connections");
                             try {
                                 if (this.toConnect != null) {
                                     this.toConnect.close();
@@ -329,20 +337,31 @@ public class FittingRoom{
          *
          * @param a The number of rooms
          */
-
         public ChangeRoom(int a) {
             this.numRooms = a;
             this.fitRooms = new Semaphore(a);
         }
 
+        /**
+         * Attempts to acquire a permit from the changing room
+         *
+         * @return A boolean containing whether a permit was acquired
+         */
         public boolean tryAcquire() {
             return this.fitRooms.tryAcquire();
         }
 
+        /**
+         * Releases a permit from the changing room
+         */
         public void release() {
             this.fitRooms.release();
         }
 
+        /**
+         * Checks the number of permits in the changing room
+         * @return A int containing the number of open slots in the changing room
+         */
         public int stateCheck() {
             return this.fitRooms.availablePermits();
         }
@@ -353,8 +372,20 @@ public class FittingRoom{
      * rooms.
      */
     private static class WaitRoom {
+
+        /**
+         * An integer representing the number of rooms
+         */
         private int numRooms;
+
+        /**
+         * A basic lock for accessing the linked list sequentially to prevent issues
+         */
         private Semaphore access = new Semaphore(1);
+
+        /**
+         * A linked list representing all connections in the waiting room
+         */
         private LinkedList<fitConnection> waitRooms = new LinkedList<>();
 
         /**
@@ -366,6 +397,11 @@ public class FittingRoom{
             this.numRooms = a;
         }
 
+        /**
+         * A simple method to check if a connection is inside the linked list, does implement a lock in order to run sequentially and prevent race conditions
+         * @param a the connection to check for in the list
+         * @return contains, a boolean representing if it is in the list or not
+         */
         public boolean contains(fitConnection a) {
             while (!access.tryAcquire()) {}
             boolean contains = this.waitRooms.contains(a);
@@ -373,6 +409,11 @@ public class FittingRoom{
             return contains;
         }
 
+        /**
+         * Adds a connection a to the linked list, works sequentially via a lock
+         * @param a, the connection to be added
+         * @return a boolean representing if the action succeeded or not
+         */
         public boolean enQueue(fitConnection a) {
             while (!access.tryAcquire()) {}
             if (this.waitRooms.size() < this.numRooms) {
@@ -384,6 +425,10 @@ public class FittingRoom{
             return false;
         }
 
+        /**
+         * returns the connection at the top of the linked list
+         * @return a, the connection at the head of the linked list
+         */
         public fitConnection peek() {
             while (!access.tryAcquire()) {}
             fitConnection a = this.waitRooms.peek();
@@ -391,6 +436,10 @@ public class FittingRoom{
             return a;
         }
 
+        /**
+         * removes and returns the head of the linked list
+         * @return the head connection
+         */
         public fitConnection deQueue() {
             while (!access.tryAcquire()) {}
             if (this.waitRooms.isEmpty()) {
@@ -403,6 +452,10 @@ public class FittingRoom{
             }
         }
 
+        /**
+         * Returns the state info the linked list
+         * @return a, the state of the semaphore
+         */
         public int stateCheck() {
             while (!access.tryAcquire()) {}
             int a = this.waitRooms.size();
