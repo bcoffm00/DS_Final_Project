@@ -67,7 +67,17 @@ public class FittingRoom{
         // Sends the message "SERVER" to the central server to indicate this is a
         // fitting room
         Socket centralServer = null;
-        initConnect(centralServer);
+        PrintWriter toConnect = null;
+        try {
+            centralServer = new Socket(CENTRAL_IP, CENTRAL_PORT);
+            toConnect = new PrintWriter(centralServer.getOutputStream());
+
+            toConnect.println("SERVER");
+            toConnect.flush();
+
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error connecting to central server", ex);
+        }
         ServerSocket serverSock;
         try {
             // Started the server socket
