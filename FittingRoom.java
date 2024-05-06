@@ -322,6 +322,7 @@ public class FittingRoom{
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
+                            task = 1000;
                     }
                 }
 
