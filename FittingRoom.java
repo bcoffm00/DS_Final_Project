@@ -72,7 +72,7 @@ public class FittingRoom{
             centralServer = new Socket(CENTRAL_IP, CENTRAL_PORT);
             toConnect = new PrintWriter(centralServer.getOutputStream());
 
-            toConnect.println("SERVER");
+            toConnect.println("SERVER,"+args[0]);
             toConnect.flush();
 
         } catch (Exception ex) {
