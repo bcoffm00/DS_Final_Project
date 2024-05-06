@@ -80,7 +80,6 @@ public class FittingRoom {
 			}
 			
 			alive = true;
-			socket.close();
 			return alive;
 
 		} catch (SocketTimeoutException e) {
