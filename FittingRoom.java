@@ -9,8 +9,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.util.LinkedList;
 import java.util.concurrent.Semaphore;
 import java.util.logging.FileHandler;
@@ -56,6 +59,36 @@ public class FittingRoom {
 	/** Port number of the central server */
 	final static int CENTRAL_PORT = 32005;
 
+	
+	
+	public static boolean isConnectionAlive(String hostname, int port) {
+		boolean alive = false;
+		SocketAddress address = new InetSocketAddress(hostname, port);
+		Socket socket = new Socket();
+		int timeout = 5000;
+		PrintWriter out;
+		BufferedReader input;
+		try {
+			socket.connect(address, timeout);
+			out = new PrintWriter(socket.getOutputStream());
+			input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			out.println("Heartbeat");
+			out.flush();
+			String line = input.readLine();
+			while(!line.equalsIgnoreCase("HEARTBEAT")) {
+				line = input.readLine();
+			}
+			
+			alive = true;
+			return alive;
+
+		} catch (SocketTimeoutException e) {
+			return alive;
+		} catch (IOException e) {
+			return alive;
+		}
+	}
+	
 	/**
 	 * The main method initializes the fitting room system, connects to the central
 	 * server, and starts the server socket to listen for incoming client
@@ -83,8 +116,11 @@ public class FittingRoom {
 			// Started the server socket
 			serverSock = new ServerSocket(CENTRAL_PORT);
 			FitRoom FittingRoom = new FitRoom(Integer.parseInt(args[0]));
+			
+			boolean alive = isConnectionAlive(CENTRAL_IP,CENTRAL_PORT);
 			// Main loop to rip threads
-			while (true) {
+			while (alive) {
+				alive = isConnectionAlive(CENTRAL_IP,CENTRAL_PORT);
 				Socket newCon = serverSock.accept();
 				BufferedReader br = new BufferedReader(new InputStreamReader(newCon.getInputStream()));
 				String line = br.readLine();
