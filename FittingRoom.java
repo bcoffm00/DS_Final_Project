@@ -66,7 +66,8 @@ public class FittingRoom{
     public static void main(String[] args) {
         // Sends the message "SERVER" to the central server to indicate this is a
         // fitting room
-        initConnect();
+        Socket centralServer = null;
+        initConnect(centralServer);
         ServerSocket serverSock;
         try {
             // Started the server socket
@@ -120,10 +121,10 @@ public class FittingRoom{
     /**
      * Sends a message to the central server indicating that this is a fitting room.
      */
-    private static void initConnect() {
+    private static void initConnect(Socket a) {
         try {
-            Socket centralServer = new Socket(CENTRAL_IP, CENTRAL_PORT);
-            PrintWriter toConnect = new PrintWriter(centralServer.getOutputStream());
+            a = new Socket(CENTRAL_IP, CENTRAL_PORT);
+            PrintWriter toConnect = new PrintWriter(a.getOutputStream());
 
             toConnect.println("SERVER");
             toConnect.flush();
