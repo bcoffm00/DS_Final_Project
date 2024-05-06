@@ -59,8 +59,6 @@ public class FittingRoom {
 	/** Port number of the central server */
 	final static int CENTRAL_PORT = 32005;
 
-	
-	
 	public static boolean isConnectionAlive(String hostname, int port) {
 		boolean alive = false;
 		SocketAddress address = new InetSocketAddress(hostname, port);
@@ -75,10 +73,10 @@ public class FittingRoom {
 			out.println("Heartbeat");
 			out.flush();
 			String line = input.readLine();
-			while(!line.equalsIgnoreCase("HEARTBEAT")) {
+			while (!line.equalsIgnoreCase("HEARTBEAT")) {
 				line = input.readLine();
 			}
-			
+
 			alive = true;
 			return alive;
 
@@ -88,7 +86,7 @@ public class FittingRoom {
 			return alive;
 		}
 	}
-	
+
 	/**
 	 * The main method initializes the fitting room system, connects to the central
 	 * server, and starts the server socket to listen for incoming client
@@ -116,11 +114,12 @@ public class FittingRoom {
 			// Started the server socket
 			serverSock = new ServerSocket(CENTRAL_PORT);
 			FitRoom FittingRoom = new FitRoom(Integer.parseInt(args[0]));
-			
-			boolean alive = isConnectionAlive(CENTRAL_IP,CENTRAL_PORT);
+
+			boolean alive = isConnectionAlive(CENTRAL_IP, CENTRAL_PORT);
 			// Main loop to rip threads
+			int a = 1;
 			while (alive) {
-				alive = isConnectionAlive(CENTRAL_IP,CENTRAL_PORT);
+				alive = isConnectionAlive(CENTRAL_IP, CENTRAL_PORT);
 				Socket newCon = serverSock.accept();
 				BufferedReader br = new BufferedReader(new InputStreamReader(newCon.getInputStream()));
 				String line = br.readLine();
@@ -140,7 +139,8 @@ public class FittingRoom {
 						ex.printStackTrace();
 					}
 				} else if (line.equalsIgnoreCase("fitquery")) {
-					fitConnection curConnection = new fitConnection(newCon, FittingRoom);
+					fitConnection curConnection = new fitConnection(newCon, FittingRoom, a);
+					a++;
 					curConnection.start();
 				}
 
@@ -186,6 +186,7 @@ public class FittingRoom {
 	 */
 	@SuppressWarnings("unused")
 	private static class fitConnection extends Thread {
+		private int threadNum;
 		private FitRoom par = null;
 		private Socket connection = null;
 		private PrintWriter toConnect = null;
@@ -197,7 +198,8 @@ public class FittingRoom {
 		 * @param newSock The client socket
 		 * @param b       The FitRoom instance
 		 */
-		public fitConnection(Socket newSock, FitRoom b) {
+		public fitConnection(Socket newSock, FitRoom b, int a) {
+			this.threadNum = a;
 			this.par = b;
 
 			try {
@@ -281,62 +283,56 @@ public class FittingRoom {
 						break;
 					case 1:
 						message = this.readMessage();
+						System.out.println("Thread " + this.threadNum + " has entered fitting room server");
+						response = this.par.enter(this, true);
+						System.out.println("Thread " + this.threadNum + " response is " + response);
+						this.sendMessage(response);
 						task++;
 						break;
 
 					case 2:
-						if (message.equalsIgnoreCase("enter")) {
-							System.out.println("Thread entering fitting room server");
-							response = this.par.enter(this);
-							task++;
+						if (response.equalsIgnoreCase("ENTERED")) {
+							System.out.println("\t\tThread " + this.threadNum + " has entered the changing room");
+							task = 4;
 							break;
 						} else {
-							task = 0;
+							System.out.println("\tThread " + this.threadNum + " has entered the waiting room");
+							task = 3;
 							break;
 						}
+							
 
 					case 3:
+						while (!this.par.compare(this)) {}
+						//Checking for this to be the head of the waiting room
+						while (this.par.changeCheck()==0) {}
+						//Checking for an open space 
+						while (response.equals("WAITING")) {
+							response = this.par.enter(this, false);
+						}
+						System.out.println("\t\tThread " + this.threadNum + " has entered the changing room");
+						//Now that we have successfully entered the changing room send the message
 						this.sendMessage(response);
 						task++;
 						break;
 
 					case 4:
-						if (response.equalsIgnoreCase("waiting")) {
-							System.out.println("\tThread entered waiting room");
-							task = 5;
-							break;
-						} else {
-							System.out.println("\tThread entered changing room");
-							task = 6;
-							break;
-						}
+						message = this.readMessage();
+						//reads in the exit message
+						task++;
+						break;
 
 					case 5:
-						System.out.println("\t\tThread checking for head of the list");
-						while (!this.par.compare(this)) {
-						}
-						System.out.println("\t\tThread waiting for changing room to be open");
-						while (response.equalsIgnoreCase("waiting")) {
-							response = this.par.enter(this);
-						}
-						System.out.println("\t\tInforming thread it is in changing room");
+						response = this.par.exit();
+						System.out.println("\t\t\tThread " + this.threadNum + " has exited the changing room");
+						//releases a changing room permit
 						this.sendMessage(response);
+						//sends received
 						task++;
 						break;
 
 					case 6:
-						message = this.readMessage();
-						task++;
-						break;
-
-					case 7:
-						System.out.println("\t\t\tThread exiting changing room");
-						this.sendMessage(this.par.exit());
-						task++;
-						break;
-
-					case 8:
-						System.out.println("\t\t\t\tClosing Thread connections");
+						System.out.println("\t\t\t\tClosing Thread " + this.threadNum +  " connections");
 						try {
 							if (this.toConnect != null) {
 								this.toConnect.close();
@@ -359,11 +355,8 @@ public class FittingRoom {
 							ex.printStackTrace();
 						}
 						task = 1000;
+						break;
 					}
-				}
-
-				if (message.equalsIgnoreCase("ENTER")) {
-					message = this.par.enter(this);
 				}
 
 			} catch (Exception ex) {
@@ -408,7 +401,7 @@ public class FittingRoom {
 
 		/**
 		 * Checks the number of permits in the changing room
-		 * 
+		 *
 		 * @return A int containing the number of open slots in the changing room
 		 */
 		public int stateCheck() {
@@ -449,7 +442,7 @@ public class FittingRoom {
 		/**
 		 * A simple method to check if a connection is inside the linked list, does
 		 * implement a lock in order to run sequentially and prevent race conditions
-		 * 
+		 *
 		 * @param a the connection to check for in the list
 		 * @return contains, a boolean representing if it is in the list or not
 		 */
@@ -463,7 +456,7 @@ public class FittingRoom {
 
 		/**
 		 * Adds a connection a to the linked list, works sequentially via a lock
-		 * 
+		 *
 		 * @param a, the connection to be added
 		 * @return a boolean representing if the action succeeded or not
 		 */
@@ -481,7 +474,7 @@ public class FittingRoom {
 
 		/**
 		 * returns the connection at the top of the linked list
-		 * 
+		 *
 		 * @return a, the connection at the head of the linked list
 		 */
 		public fitConnection peek() {
@@ -494,7 +487,7 @@ public class FittingRoom {
 
 		/**
 		 * removes and returns the head of the linked list
-		 * 
+		 *
 		 * @return the head connection
 		 */
 		public fitConnection deQueue() {
@@ -512,7 +505,7 @@ public class FittingRoom {
 
 		/**
 		 * Returns the state info the linked list
-		 * 
+		 *
 		 * @return a, the state of the semaphore
 		 */
 		public int stateCheck() {
@@ -529,6 +522,7 @@ public class FittingRoom {
 	 * Represents a fitting room containing a waiting room and a change room.
 	 */
 	private static class FitRoom {
+		private Semaphore lock = new Semaphore(1);
 		private WaitRoom WaitingRooms = null;
 		private ChangeRoom ChangingRooms = null;
 
@@ -541,34 +535,60 @@ public class FittingRoom {
 			this.WaitingRooms = new WaitRoom(a * 2);
 			this.ChangingRooms = new ChangeRoom(a);
 		}
+		
+		public int changeCheck () {
+			int a = 0;
+			while (!lock.tryAcquire()) {}
+			a = this.ChangingRooms.stateCheck();
+			lock.release();
+			return a;
+		}
 
 		public String bloodTest() {
 			return this.WaitingRooms.stateCheck() + "," + this.ChangingRooms.stateCheck();
 		}
 
-		public String enter(fitConnection a) {
+		public String enter(fitConnection a, boolean b) {
+			String msg = "";
+			while (!lock.tryAcquire()) {}
+			
 			if (this.ChangingRooms.tryAcquire()) {
-
-				this.WaitingRooms.deQueue();
-				return "ENTERED";
+				//if this enters this if statement there was space in the changing room and a permit has been acquired
+				msg = "ENTERED";
+				//if !b then this enter is being called for the first time so the waiting room does not need to be deQueued
+				if (!b) {
+					this.WaitingRooms.deQueue();
+				}
 			} else {
-				if (!this.WaitingRooms.contains(a)) {
+				//if this enters this else statement there is no space in the changing room
+				msg = "WAITING";
+				//add this fitconnection to the waiting list if its not already there
+				if (this.WaitingRooms.contains(a)) {
 					this.WaitingRooms.enQueue(a);
 				}
-				return "WAITING";
+					
 			}
+			
+			lock.release();
+			return msg;
 		}
 
 		public boolean compare(fitConnection a) {
+			while (!lock.tryAcquire()) {}
+			
 			if (this.WaitingRooms.peek().equals(a)) {
+				lock.release();
 				return true;
 			} else {
+				lock.release();
 				return false;
 			}
 		}
 
 		public String exit() {
+			while (!lock.tryAcquire()) {}
 			this.ChangingRooms.release();
+			lock.release();
 			return "RECEIVED";
 		}
 	}
