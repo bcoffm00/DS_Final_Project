@@ -27,7 +27,7 @@ import java.util.logging.SimpleFormatter;
  * This is the Central server Class This class starts a server that listens for
  * messages from a server or client and handles them accordingly.
  *
- * @author tonya
+ *
  *
  */
 public class Central {
@@ -238,9 +238,12 @@ public class Central {
 						// Message Sent to Server from Client
 						System.out.println(name + " Sending: " + line + " to " + Server.name + "\n");
 						LOGGER.info(name + " Sending: " + line + " to " + Server.name);
-
+						//System.out.println("here");
+						//System.out.println(name + " sent " + line);
 						ServerOut.println(line);
 						ServerOut.flush();
+						//System.out.println(ServerOut + " " + s);
+						//System.out.println("there " + line);
 						serverTurn = true;
 						clientTurn = false;
 						task = 2;
