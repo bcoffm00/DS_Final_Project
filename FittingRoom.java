@@ -54,7 +54,7 @@ public class FittingRoom {
 	}
 
 	/** IP address of the central server */
-	final static String CENTRAL_IP = "10.181.240.38";
+	final static String CENTRAL_IP = "10.183.244.42";
 
 	/** Port number of the central server */
 	final static int CENTRAL_PORT = 32005;
@@ -300,13 +300,13 @@ public class FittingRoom {
 							task = 3;
 							break;
 						}
-							
+
 
 					case 3:
 						while (!this.par.compare(this)) {}
 						//Checking for this to be the head of the waiting room
 						while (this.par.changeCheck()==0) {}
-						//Checking for an open space 
+						//Checking for an open space
 						while (response.equals("WAITING")) {
 							response = this.par.enter(this, false);
 						}
@@ -535,7 +535,7 @@ public class FittingRoom {
 			this.WaitingRooms = new WaitRoom(a * 2);
 			this.ChangingRooms = new ChangeRoom(a);
 		}
-		
+
 		public int changeCheck () {
 			int a = 0;
 			while (!lock.tryAcquire()) {}
@@ -551,7 +551,7 @@ public class FittingRoom {
 		public String enter(fitConnection a, boolean b) {
 			String msg = "";
 			while (!lock.tryAcquire()) {}
-			
+
 			if (this.ChangingRooms.tryAcquire()) {
 				//if this enters this if statement there was space in the changing room and a permit has been acquired
 				msg = "ENTERED";
@@ -566,16 +566,16 @@ public class FittingRoom {
 				if (this.WaitingRooms.contains(a)) {
 					this.WaitingRooms.enQueue(a);
 				}
-					
+
 			}
-			
+
 			lock.release();
 			return msg;
 		}
 
 		public boolean compare(fitConnection a) {
 			while (!lock.tryAcquire()) {}
-			
+
 			if (this.WaitingRooms.peek().equals(a)) {
 				lock.release();
 				return true;
